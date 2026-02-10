@@ -6,7 +6,7 @@ export const HomeFooter = () => {
     <Footer className="text-center bg-transparent text-white/70">
       <div className="space-x-4">
         <a
-          href="https://github.com/yourname"
+          href="https://github.com/iAeternus"
           target="_blank"
           className="hover:text-white"
         >

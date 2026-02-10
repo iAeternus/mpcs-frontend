@@ -1,10 +1,5 @@
 import { Layout, Menu } from "antd";
-import {
-  BarChartOutlined,
-  UserOutlined,
-  TeamOutlined,
-  GlobalOutlined,
-} from "@ant-design/icons";
+import { BarChartOutlined, UserOutlined, TeamOutlined, GlobalOutlined } from "@ant-design/icons";
 import type { HomeTabKey } from "../..";
 
 const { Sider } = Layout;
@@ -15,28 +10,29 @@ interface Props {
 }
 
 export const HomeSidebar: React.FC<Props> = ({ active, onChange }) => {
+  const menuItems = [
+    { key: "usage", icon: <BarChartOutlined />, label: "用量统计" },
+    { key: "personal", icon: <UserOutlined />, label: "个人空间" },
+    { key: "team", icon: <TeamOutlined />, label: "团队空间" },
+    { key: "public", icon: <GlobalOutlined />, label: "公共空间" },
+  ];
+
   return (
     <Sider
       width={220}
-      className="
-        rounded-2xl
-        overflow-hidden
-        bg-white/45 dark:bg-white/5
-        backdrop-blur-xl
-        shadow-[0_8px_30px_rgba(0,0,0,0.12)]
-      "
+      className="rounded-2xl overflow-hidden p-3
+        bg-white/45 dark:bg-white/5 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
     >
       <Menu
         mode="inline"
         selectedKeys={[active]}
         onClick={(e) => onChange(e.key as HomeTabKey)}
-        className="bg-transparent border-none mpcs-menu"
-        items={[
-          { key: "usage", icon: <BarChartOutlined />, label: "用量统计" },
-          { key: "personal", icon: <UserOutlined />, label: "个人空间" },
-          { key: "team", icon: <TeamOutlined />, label: "团队空间" },
-          { key: "public", icon: <GlobalOutlined />, label: "公共空间" },
-        ]}
+        className="mpcs-menu bg-transparent border-none"
+        items={menuItems.map((item) => ({
+          key: item.key,
+          icon: item.icon,
+          label: item.label,
+        }))}
       />
     </Sider>
   );

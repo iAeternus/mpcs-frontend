@@ -32,19 +32,15 @@ export const HomeHeader = () => {
   return (
     <Header
       className="
+        mpcs-home-header
         sticky top-0 z-50
         flex justify-between items-center px-8
-        bg-white/45 dark:bg-white/5
+        bg-white/45 dark:bg-gray-900/50
         backdrop-blur-xl
         shadow-sm
       "
     >
-      {/* MPCS 渐变标题 */}
-      <div
-        className="text-xl font-semibold 
-        bg-gradient-to-r from-indigo-500 to-purple-600 
-        bg-clip-text text-transparent"
-      >
+      <div className="mpcs-logo text-xl font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
         MPCS
       </div>
 
@@ -52,11 +48,7 @@ export const HomeHeader = () => {
         <Avatar
           size="large"
           icon={<UserOutlined />}
-          className="
-            cursor-pointer
-            bg-gradient-to-r from-indigo-500 to-purple-600
-            shadow-md
-          "
+          className="cursor-pointer bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md"
         />
       </Dropdown>
     </Header>

@@ -1,9 +1,16 @@
-/* 1. Sider 背景透明，统一玻璃风格 */
+/* ===========================
+   MPCS Sidebar 简洁统一风格
+   - Hover 背景和 Selected 胶囊宽度一致
+   - 左右居中、固定高度防止跳动
+   - 玻璃感 + 柔和阴影 + 渐变
+   =========================== */
+
+/* 1. Sider 背景透明 */
 .ant-layout-sider,
 .ant-layout-sider-children {
   background: transparent !important;
   border: none !important;
-  padding: 12px 0; /* 顶部底部留白 */
+  padding: 12px 0;
 }
 
 /* 2. Menu 背景透明 */
@@ -17,11 +24,11 @@
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 50px; /* 固定高度防止跳动 */
-  margin: 6px 4px; /* 上下间距6px，左右5px */
-  padding: 0 16px !important; /* 内部文字与图标左右间距 */
-  border-radius: 14px; /* 胶囊圆角 */
-  color: #1f2937; /* 浅色文字 */
+  min-height: 50px;
+  margin: 6px 4px;
+  padding: 0 16px !important;
+  border-radius: 14px;
+  color: #1f2937;
   font-weight: 500;
   z-index: 1;
   transition: color 0.2s ease;
@@ -33,15 +40,15 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0px;
-  right: 0px; /* 与左右 margin 对齐，宽度 = 容器宽度 - 12px */
+  left: 0;
+  right: 0;
   border-radius: 14px;
   background: transparent;
   z-index: -1;
   transition: background 0.2s ease;
 }
 
-/* 5. Hover 背景 - 浅色模式 */
+/* 5. Hover 背景 */
 .mpcs-menu .ant-menu-item:hover::before {
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(8px);
@@ -52,10 +59,10 @@
 }
 
 .mpcs-menu .ant-menu-item:hover .anticon {
-  color: #4f46e5 !important; /* Indigo-600 */
+  color: #4f46e5 !important;
 }
 
-/* 6. Hover 背景 - 深色模式 */
+/* 6. Hover 暗黑模式 */
 .dark .mpcs-menu .ant-menu-item:hover::before {
   background: rgba(255, 255, 255, 0.08);
 }
@@ -65,12 +72,12 @@
 }
 
 .dark .mpcs-menu .ant-menu-item:hover .anticon {
-  color: #a78bfa !important; /* Violet-400 */
+  color: #a78bfa !important;
 }
 
 /* 7. Selected 胶囊背景 */
 .mpcs-menu .ant-menu-item-selected::before {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6); /* 渐变胶囊 */
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
 }
 
