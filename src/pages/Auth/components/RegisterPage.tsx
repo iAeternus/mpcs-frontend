@@ -20,7 +20,7 @@ export const RegisterPage = () => {
   const onFinish = async (form: RegisterCommand) => {
     console.log("registerFormValues", form);
     await registerApi(form);
-    antdMessage.success("register successful!");
+    antdMessage.success("注册成功！");
     navigate("/login"); // 跳转到登录页
   };
 

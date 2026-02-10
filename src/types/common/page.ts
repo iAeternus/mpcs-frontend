@@ -4,9 +4,9 @@ export interface PageQuery {
 }
 
 export interface SearchablePageQuery extends PageQuery {
-  search: string;
-  sortedBy: string;
-  ascSort: boolean;
+  search?: string;
+  sortedBy?: string;
+  ascSort?: boolean;
 }
 
 export interface PagedList<T> {

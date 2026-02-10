@@ -16,7 +16,7 @@ export const LoginPage = () => {
 
   const onFinish = async (form: MobileOrEmailLoginCommand) => {
     await dispatch(login(form));
-    antdMessage.success("Login successful!");
+    antdMessage.success("登录成功！");
     navigate("/"); // 跳转到首页
   };
 
