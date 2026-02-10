@@ -8,6 +8,7 @@ import {
   Modal,
   Input,
   List,
+  theme,
 } from "antd";
 import type { TreeProps } from "antd";
 import type { HierarchyFolder, HierarchyFile } from "@/types/folder/query";
@@ -32,6 +33,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   const { loading, idTree, folderMap, folderNameMap } =
     useFolderHierarchy(customId);
 
+  const { token } = theme.useToken();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
   /** Tree 数据 */
@@ -124,7 +126,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   return (
     <div className="flex gap-6 w-full">
       {/* 左侧树 */}
-      <Card className="w-80" title="文件夹目录">
+      <Card className="w-80">
         {loading ? (
           <Spin />
         ) : (
@@ -165,7 +167,15 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
               menu={buildFolderMenu(folder)}
             >
               <div
-                className="border rounded px-3 py-2 cursor-pointer hover:bg-gray-100"
+                className="
+                  border border-gray-200/60 dark:border-white/10
+                  rounded-lg px-3 py-2 cursor-pointer
+                  transition-all
+
+                  hover:shadow-sm
+                  dark:hover:bg-white/10
+                "
+                style={{ color: token.colorText }}
                 onDoubleClick={() => setCurrentFolderId(folder.id)}
               >
                 📁 {folder.folderName}
