@@ -1,7 +1,7 @@
 import { AuthPage } from "@/pages/Auth";
 import { LoginPage } from "@/pages/Auth/components/LoginPage";
 import { RegisterPage } from "@/pages/Auth/components/RegisterPage";
-import { Home } from "@/pages/Home";
+import { Home } from "@/pages/Home/index";
 import { createBrowserRouter } from "react-router-dom";
 
 const router = createBrowserRouter([

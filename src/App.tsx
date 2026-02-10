@@ -1,17 +1,17 @@
 import React, { useEffect } from "react";
 import { ConfigProvider, theme, App as AntdApp } from "antd";
 import zhCN from "antd/locale/zh_CN";
-import { useAppSelector, useAppDispatch } from "@/store";
-import { setAntdApis } from "@/utils/antdHolder"; // ✅ 新增
+import { useAppSelector } from "@/store";
+import { setAntdApis } from "@/utils/antdHolder";
+import "./pages/index.css";
 
 interface AppProps {
   children: React.ReactNode;
 }
 
 export const App: React.FC<AppProps> = ({ children }) => {
-  const dispatch = useAppDispatch();
   const themeMode = useAppSelector((state) => state.theme.mode);
-  const primaryColor = useAppSelector((state) => state.theme.primaryColor);
+  const primaryColor = themeMode === "dark" ? "#8b5cf6" : "#6366f1";
 
   useEffect(() => {
     const root = document.documentElement;
@@ -19,12 +19,12 @@ export const App: React.FC<AppProps> = ({ children }) => {
 
     if (themeMode === "dark") {
       root.classList.add("dark");
-      body.style.backgroundColor = "#141414";
-      body.style.color = "rgba(255, 255, 255, 0.85)";
+      body.style.backgroundColor = "#020617";
+      body.style.color = "rgba(255,255,255,0.88)";
     } else {
       root.classList.remove("dark");
-      body.style.backgroundColor = "#f0f2f5";
-      body.style.color = "rgba(0, 0, 0, 0.88)";
+      body.style.backgroundColor = "#f5f7fb";
+      body.style.color = "rgba(0,0,0,0.88)";
     }
   }, [themeMode]);
 

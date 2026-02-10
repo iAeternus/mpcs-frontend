@@ -1,0 +1,102 @@
+/* 1. Sider 背景透明，统一玻璃风格 */
+.ant-layout-sider,
+.ant-layout-sider-children {
+  background: transparent !important;
+  border: none !important;
+  padding: 12px 0; /* 顶部底部留白 */
+}
+
+/* 2. Menu 背景透明 */
+.mpcs-menu.ant-menu {
+  background: transparent !important;
+  border: none;
+}
+
+/* 3. Menu Item 基础样式 */
+.mpcs-menu .ant-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 50px; /* 固定高度防止跳动 */
+  margin: 6px 4px; /* 上下间距6px，左右5px */
+  padding: 0 16px !important; /* 内部文字与图标左右间距 */
+  border-radius: 14px; /* 胶囊圆角 */
+  color: #1f2937; /* 浅色文字 */
+  font-weight: 500;
+  z-index: 1;
+  transition: color 0.2s ease;
+}
+
+/* 4. Hover / Selected 胶囊背景统一 */
+.mpcs-menu .ant-menu-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0px;
+  right: 0px; /* 与左右 margin 对齐，宽度 = 容器宽度 - 12px */
+  border-radius: 14px;
+  background: transparent;
+  z-index: -1;
+  transition: background 0.2s ease;
+}
+
+/* 5. Hover 背景 - 浅色模式 */
+.mpcs-menu .ant-menu-item:hover::before {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.mpcs-menu .ant-menu-item:hover {
+  color: #111827 !important;
+}
+
+.mpcs-menu .ant-menu-item:hover .anticon {
+  color: #4f46e5 !important; /* Indigo-600 */
+}
+
+/* 6. Hover 背景 - 深色模式 */
+.dark .mpcs-menu .ant-menu-item:hover::before {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .mpcs-menu .ant-menu-item:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.dark .mpcs-menu .ant-menu-item:hover .anticon {
+  color: #a78bfa !important; /* Violet-400 */
+}
+
+/* 7. Selected 胶囊背景 */
+.mpcs-menu .ant-menu-item-selected::before {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6); /* 渐变胶囊 */
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+}
+
+/* 8. Selected 文字和图标 */
+.mpcs-menu .ant-menu-item-selected,
+.mpcs-menu .ant-menu-item-selected .anticon {
+  color: white !important;
+}
+
+/* 9. 去掉默认蓝条 */
+.mpcs-menu .ant-menu-item-selected::after {
+  display: none !important;
+}
+
+/* 10. Icon 和文字间距 */
+.mpcs-menu .ant-menu-item .anticon {
+  margin-right: 12px;
+  transition: color 0.2s ease;
+}
+
+/* 11. Menu Title 内容字体 */
+.mpcs-menu .ant-menu-title-content {
+  font-weight: 500;
+}
+
+/* 12. 暗色模式文字 */
+.dark .mpcs-menu .ant-menu-item {
+  color: rgba(255, 255, 255, 0.85);
+}
