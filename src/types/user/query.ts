@@ -14,4 +14,5 @@ export interface UserInfoResponse {
   email: string;
   mobile: string;
   role: Role;
+  customId: string;
 }

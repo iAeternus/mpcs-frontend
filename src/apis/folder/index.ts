@@ -65,12 +65,13 @@ export const moveFolderApi = async (
   return res.data;
 };
 
-/** 获取文件夹层级 */
-export const getFolderHierarchyApi =
-  async (): Promise<FolderHierarchyResponse> => {
-    const res = await http.request<FolderHierarchyResponse>({
-      url: "/folders/hierarchy",
-      method: "GET",
-    });
-    return res.data;
-  };
+/** 获取文件夹层级结构 */
+export const fetchFolderHierarchyApi = async (
+  customId: string,
+): Promise<FolderHierarchyResponse> => {
+  const res = await http.request<FolderHierarchyResponse>({
+    url: `/folders/${customId}`,
+    method: "GET",
+  });
+  return res.data;
+};

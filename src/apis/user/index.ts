@@ -1,3 +1,4 @@
+import type { FolderHierarchyResponse } from "@/types/folder/query";
 import type { UserInfoResponse, UserProfileResponse } from "@/types/user/query";
 import { http } from "@/utils/http";
 

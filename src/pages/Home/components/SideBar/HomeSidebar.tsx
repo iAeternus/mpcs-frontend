@@ -1,5 +1,10 @@
 import { Layout, Menu } from "antd";
-import { BarChartOutlined, UserOutlined, TeamOutlined, GlobalOutlined } from "@ant-design/icons";
+import {
+  BarChartOutlined,
+  UserOutlined,
+  TeamOutlined,
+  GlobalOutlined,
+} from "@ant-design/icons";
 import type { HomeTabKey } from "../..";
 
 const { Sider } = Layout;
@@ -20,8 +25,7 @@ export const HomeSidebar: React.FC<Props> = ({ active, onChange }) => {
   return (
     <Sider
       width={220}
-      className="rounded-2xl overflow-hidden p-3
-        bg-white/45 dark:bg-white/5 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+      className="rounded-2xl overflow-hidden p-3 bg-white/45 dark:bg-white/5 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
     >
       <Menu
         mode="inline"

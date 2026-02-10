@@ -36,6 +36,7 @@ export interface Manager {
 
 export interface GroupResponse {
   groupId: string;
+  customId: string;
   name: string;
   active: boolean;
   inheritancePolicy: InheritancePolicy;

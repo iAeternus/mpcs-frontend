@@ -1,4 +1,5 @@
 import type { IdTree } from "../common/idtree";
+import type { FileStatus } from "../file/enums/fileStatus";
 
 export interface FolderHierarchyResponse {
   idTree: IdTree;
@@ -10,4 +11,12 @@ export interface HierarchyFolder {
   folderName: string;
   parentId: string;
   path: string;
+  files: HierarchyFile[];
+}
+
+export interface HierarchyFile {
+  id: string;
+  filename: string;
+  size: number;
+  status: FileStatus;
 }
