@@ -1,7 +1,6 @@
 import { Typography, Form, Input, Button } from "antd";
 import { useAppDispatch } from "@/store";
 import { Link, useNavigate } from "react-router-dom";
-import loginBg from "@/assets/login-bg.png";
 import { RULES } from "@/utils/rules";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import type { MobileOrEmailLoginCommand } from "@/types/login/command";
@@ -11,41 +10,30 @@ import { antdMessage } from "@/utils/antdHolder";
 export const LoginPage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-
   const [form] = Form.useForm();
 
   const onFinish = async (form: MobileOrEmailLoginCommand) => {
     await dispatch(login(form));
     antdMessage.success("登录成功！");
-    navigate("/"); // 跳转到首页
+    navigate("/");
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{
-        // todo url
-        backgroundImage: `url(${loginBg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      {/* 背景遮罩层 */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+      {/* 光斑 */}
+      <div className="absolute -top-32 -left-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
+      <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
 
-      {/* 登录卡片 */}
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 md:p-10">
-          {/* 头部 */}
+      {/* 卡片 */}
+      <div className="relative z-10 w-full max-w-md px-6">
+        <div className="backdrop-blur-xl bg-white/80 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] p-10 border border-white/40">
           <div className="text-center mb-8">
-            <Typography.Title level={2} className="!mb-2 !text-gray-800">
-              欢迎回来
+            <Typography.Title level={2} className="!mb-1 !font-semibold">
+              Welcome Back
             </Typography.Title>
-            <p className="text-gray-500 text-sm">请登录您的账户继续</p>
+            <p className="text-gray-500">登录以继续使用系统</p>
           </div>
 
-          {/* 表单 */}
           <Form
             form={form}
             validateTrigger="onBlur"
@@ -54,60 +42,47 @@ export const LoginPage = () => {
           >
             <Form.Item name="mobileOrEmail" rules={RULES.mobileOrEmail}>
               <Input
-                prefix={<UserOutlined className="text-gray-400" />}
-                placeholder="邮箱/手机号/账号"
+                prefix={<UserOutlined />}
+                placeholder="邮箱 / 手机号"
                 size="large"
-                className="rounded-lg"
+                className="rounded-xl"
               />
             </Form.Item>
 
             <Form.Item name="password" rules={RULES.password}>
               <Input.Password
-                prefix={<LockOutlined className="text-gray-400" />}
-                type="password"
-                placeholder="8-16位,含大小写字母、数字、特殊字符"
+                prefix={<LockOutlined />}
+                placeholder="密码"
                 size="large"
-                className="rounded-lg"
+                className="rounded-xl"
               />
             </Form.Item>
 
-            <Form.Item className="mb-4">
-              <Button
-                type="primary"
-                htmlType="submit"
-                size="large"
-                className="w-full rounded-lg h-12 text-base font-medium bg-blue-600 hover:bg-blue-700"
-              >
-                登录
-              </Button>
-            </Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              className="w-full h-12 rounded-xl text-base font-medium bg-gradient-to-r from-indigo-500 to-purple-600"
+            >
+              登录
+            </Button>
           </Form>
 
-          {/* 底部链接 */}
-          <div className="space-y-3 text-sm">
-            <div className="text-center">
-              <Link
-                to=""
-                className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
-              >
-                忘记密码?
-              </Link>
-            </div>
-            <div className="text-center pt-4 border-t border-gray-200">
-              <span className="text-gray-600">还没有账号? </span>
+          <div className="mt-6 text-center text-sm text-gray-600">
+            <Link to="" className="hover:text-indigo-600">
+              忘记密码？
+            </Link>
+            <div className="mt-2">
+              没有账号？
               <Link
                 to="/login/register"
-                className="text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors"
+                className="ml-1 text-indigo-600 hover:underline"
               >
                 立即注册
               </Link>
             </div>
           </div>
         </div>
-
-        {/* 装饰元素 */}
-        <div className="absolute -top-4 -left-4 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl"></div>
-        <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl"></div>
       </div>
     </div>
   );
