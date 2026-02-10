@@ -1,6 +1,6 @@
 import { AuthPage } from "@/pages/Auth";
-import { LoginPage } from "@/pages/Auth/components/LoginPage";
-import { RegisterPage } from "@/pages/Auth/components/RegisterPage";
+import { LoginPage } from "@/pages/Auth/components/Login/LoginPage";
+import { RegisterPage } from "@/pages/Auth/components/Register/RegisterPage";
 import { Home } from "@/pages/Home/index";
 import { createBrowserRouter } from "react-router-dom";
 
