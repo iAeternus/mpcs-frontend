@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, Input, Modal, Select, TreeSelect, message, theme } from "antd";
+import { Card, Input, Modal, TreeSelect, message, theme } from "antd";
 import type { MenuProps, TreeSelectProps } from "antd";
 import type { IdNode } from "@/types/common/idtree";
 import type { HierarchyFile, HierarchyFolder } from "@/types/folder/query";
@@ -51,6 +51,8 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
       (folder) => folder.parentId === currentFolderId,
     );
   }, [currentFolderId, folderMap]);
+
+  const rootFolderId = useMemo(() => idTree[0]?.id ?? null, [idTree]);
 
   const files: HierarchyFile[] = useMemo(() => {
     if (!currentFolder?.files) return [];
@@ -343,23 +345,28 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         label: "移动文件",
         onClick: () => {
           let targetId: string | null | undefined;
+          const treeData = moveFolderTreeData(new Set<string>());
 
           Modal.confirm({
             title: "移动文件",
             content: (
-              <Select
+              <TreeSelect
                 style={{ width: "100%" }}
                 placeholder="选择目标文件夹"
-                options={folderOptions}
-                defaultValue={parentFolderId}
+                treeData={treeData}
+                treeDefaultExpandAll
                 onChange={(value: string) => {
-                  targetId = value === ROOT_OPTION ? null : value;
+                  targetId = value === ROOT_OPTION ? rootFolderId : value;
                 }}
               />
             ),
             onOk: async () => {
               if (targetId === undefined) {
                 message.warning("请选择目标文件夹");
+                return Promise.reject();
+              }
+              if (!targetId) {
+                message.warning("无法获取根目录 ID，请刷新后重试");
                 return Promise.reject();
               }
 
