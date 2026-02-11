@@ -55,7 +55,7 @@ export const HierarchyDetailPane: React.FC<HierarchyDetailPaneProps> = ({
             <div
               className="
                 border border-gray-200/60
-                rounded-xl px-3 py-2 cursor-pointer
+                rounded-xl px-3 py-2 cursor-pointer select-none
                 transition-all
                 hover:shadow-sm
                 hover:-translate-y-0.5
@@ -87,7 +87,7 @@ export const HierarchyDetailPane: React.FC<HierarchyDetailPaneProps> = ({
             }
           >
             <List.Item
-              className="cursor-pointer"
+              className="cursor-pointer select-none"
               onDoubleClick={async () => {
                 await previewFileInBrowser(file);
               }}

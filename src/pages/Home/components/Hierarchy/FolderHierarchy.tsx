@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, Input, Modal, Select, message, theme } from "antd";
-import type { MenuProps } from "antd";
+import { Card, Input, Modal, Select, TreeSelect, message, theme } from "antd";
+import type { MenuProps, TreeSelectProps } from "antd";
 import type { IdNode } from "@/types/common/idtree";
 import type { HierarchyFile, HierarchyFolder } from "@/types/folder/query";
 import { useFolderHierarchy } from "@/hooks/useFolderHierarchy";
@@ -79,6 +79,37 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     [folderMap],
   );
 
+  const moveFolderTreeData = useMemo(() => {
+    const mapToTree = (
+      nodes: IdNode[],
+      excluded: Set<string>,
+    ): NonNullable<TreeSelectProps["treeData"]> =>
+      nodes
+        .filter((node) => !excluded.has(node.id))
+        .map((node) => ({
+          title: folderMap[node.id]?.folderName ?? "未命名文件夹",
+          value: node.id,
+          key: `target:${node.id}`,
+          children: mapToTree(node.children ?? [], excluded),
+        }));
+
+    return (
+      excluded: Set<string>,
+    ): NonNullable<TreeSelectProps["treeData"]> => {
+      const topLevel = mapToTree(idTree, excluded);
+      const singleRootNode = topLevel.length === 1;
+
+      return [
+        {
+          title: "根目录",
+          value: ROOT_OPTION,
+          key: `target:${ROOT_OPTION}`,
+          children: singleRootNode ? topLevel[0].children : topLevel,
+        },
+      ];
+    };
+  }, [folderMap, idTree]);
+
   const getDescendantIds = (folderId: string) => {
     const root = nodeMap.get(folderId);
     if (!root) return new Set<string>();
@@ -142,7 +173,9 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
       if (!selected.length) return;
 
       try {
-        await Promise.all(selected.map((file) => uploadFileApi(folder.id, file)));
+        await Promise.all(
+          selected.map((file) => uploadFileApi(folder.id, file)),
+        );
         message.success(`上传成功，共 ${selected.length} 个文件`);
         await reload();
       } catch {
@@ -233,19 +266,16 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
           let targetId: string | null | undefined;
           const excluded = getDescendantIds(folder.id);
           excluded.add(folder.id);
-
-          const options = folderOptions.filter((option) => {
-            if (option.value === ROOT_OPTION) return true;
-            return !excluded.has(option.value);
-          });
+          const treeData = moveFolderTreeData(excluded);
 
           Modal.confirm({
             title: "移动文件夹",
             content: (
-              <Select
+              <TreeSelect
                 style={{ width: "100%" }}
                 placeholder="选择目标文件夹"
-                options={options}
+                treeData={treeData}
+                treeDefaultExpandAll
                 onChange={(value: string) => {
                   targetId = value === ROOT_OPTION ? null : value;
                 }}
@@ -370,7 +400,10 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     ],
   });
 
-  const treeData = useMemo(() => buildTreeData(idTree, folderMap), [idTree, folderMap]);
+  const treeData = useMemo(
+    () => buildTreeData(idTree, folderMap),
+    [idTree, folderMap],
+  );
 
   return (
     <Card className="w-full rounded-3xl border border-white/60 bg-white/60 shadow-xl backdrop-blur">

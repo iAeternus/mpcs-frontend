@@ -30,6 +30,7 @@ export const HierarchyTreePane: React.FC<HierarchyTreePaneProps> = ({
         </div>
       ) : (
         <Tree
+          className="[&_.ant-tree-node-content-wrapper]:select-none"
           treeData={treeData}
           defaultExpandAll
           selectedKeys={currentFolderId ? [`folder:${currentFolderId}`] : []}
@@ -53,7 +54,9 @@ export const HierarchyTreePane: React.FC<HierarchyTreePaneProps> = ({
                   trigger={["contextMenu"]}
                   menu={buildFolderMenu(currentNode.folder)}
                 >
-                  <span className="block pr-2">📁 {currentNode.title}</span>
+                  <span className="block select-none pr-2">
+                    📁 {currentNode.title}
+                  </span>
                 </Dropdown>
               );
             }
@@ -66,14 +69,23 @@ export const HierarchyTreePane: React.FC<HierarchyTreePaneProps> = ({
               return (
                 <Dropdown
                   trigger={["contextMenu"]}
-                  menu={buildFileMenu(currentNode.file, currentNode.parentFolderId)}
+                  menu={buildFileMenu(
+                    currentNode.file,
+                    currentNode.parentFolderId,
+                  )}
                 >
-                  <span className="block pr-2">📄 {currentNode.title}</span>
+                  <span className="block select-none pr-2">
+                    📄 {currentNode.title}
+                  </span>
                 </Dropdown>
               );
             }
 
-            return <span className="block pr-2">{String(node.title)}</span>;
+            return (
+              <span className="block select-none pr-2">
+                {String(node.title)}
+              </span>
+            );
           }}
         />
       )}
