@@ -1,10 +1,6 @@
+import type { FC } from "react";
+import { GlobalOutlined, TeamOutlined, UserOutlined, BarChartOutlined } from "@ant-design/icons";
 import { Layout, Menu } from "antd";
-import {
-  BarChartOutlined,
-  UserOutlined,
-  TeamOutlined,
-  GlobalOutlined,
-} from "@ant-design/icons";
 import type { HomeTabKey } from "../..";
 
 const { Sider } = Layout;
@@ -14,7 +10,7 @@ interface Props {
   onChange: (key: HomeTabKey) => void;
 }
 
-export const HomeSidebar: React.FC<Props> = ({ active, onChange }) => {
+export const HomeSidebar: FC<Props> = ({ active, onChange }) => {
   const menuItems = [
     { key: "usage", icon: <BarChartOutlined />, label: "用量统计" },
     { key: "personal", icon: <UserOutlined />, label: "个人空间" },

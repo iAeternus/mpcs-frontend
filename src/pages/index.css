@@ -1,11 +1,69 @@
-/* ===========================
-   MPCS Sidebar 简洁统一风格
-   - Hover 背景和 Selected 胶囊宽度一致
-   - 左右居中、固定高度防止跳动
-   - 玻璃感 + 柔和阴影 + 渐变
-   =========================== */
+/* Theme text tokens */
+:root {
+  --mpcs-text-strong: #0f172a;
+  --mpcs-text-primary: #1f2937;
+  --mpcs-text-muted: #334155;
+  --mpcs-text-subtle: #64748b;
+  --mpcs-text-danger: #dc2626;
+}
 
-/* 1. Sider 背景透明 */
+.dark {
+  --mpcs-text-strong: #f8fafc;
+  --mpcs-text-primary: rgba(248, 250, 252, 0.92);
+  --mpcs-text-muted: rgba(226, 232, 240, 0.9);
+  --mpcs-text-subtle: rgba(203, 213, 225, 0.86);
+  --mpcs-text-danger: #f87171;
+}
+
+.mpcs-theme-scope {
+  color: var(--mpcs-text-primary);
+}
+
+.mpcs-text-strong {
+  color: var(--mpcs-text-strong) !important;
+}
+
+.mpcs-text-muted {
+  color: var(--mpcs-text-muted) !important;
+}
+
+.mpcs-text-subtle {
+  color: var(--mpcs-text-subtle) !important;
+}
+
+.mpcs-text-danger {
+  color: var(--mpcs-text-danger) !important;
+}
+
+.mpcs-home-content-card .ant-breadcrumb,
+.mpcs-home-content-card .ant-list-item,
+.mpcs-home-content-card .ant-tree,
+.mpcs-home-content-card .ant-tree .ant-tree-node-content-wrapper {
+  color: var(--mpcs-text-primary);
+}
+
+.mpcs-home-content-card .ant-breadcrumb a,
+.mpcs-home-content-card .ant-breadcrumb-link,
+.mpcs-home-content-card .ant-list-empty-text {
+  color: var(--mpcs-text-subtle);
+}
+
+.mpcs-home-content-card .ant-list-item-meta-description,
+.mpcs-home-content-card .ant-list-item-action,
+.mpcs-home-content-card .ant-card-head-title {
+  color: var(--mpcs-text-muted);
+}
+
+.mpcs-home-content-card .ant-list-item {
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.dark .mpcs-home-content-card .ant-list-bordered,
+.dark .mpcs-home-content-card .ant-card {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Sidebar style */
 .ant-layout-sider,
 .ant-layout-sider-children {
   background: transparent !important;
@@ -13,13 +71,11 @@
   padding: 12px 0;
 }
 
-/* 2. Menu 背景透明 */
 .mpcs-menu.ant-menu {
   background: transparent !important;
   border: none;
 }
 
-/* 3. Menu Item 基础样式 */
 .mpcs-menu .ant-menu-item {
   position: relative;
   display: flex;
@@ -34,7 +90,6 @@
   transition: color 0.2s ease;
 }
 
-/* 4. Hover / Selected 胶囊背景统一 */
 .mpcs-menu .ant-menu-item::before {
   content: "";
   position: absolute;
@@ -48,7 +103,6 @@
   transition: background 0.2s ease;
 }
 
-/* 5. Hover 背景 */
 .mpcs-menu .ant-menu-item:hover::before {
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(8px);
@@ -62,7 +116,6 @@
   color: #4f46e5 !important;
 }
 
-/* 6. Hover 暗黑模式 */
 .dark .mpcs-menu .ant-menu-item:hover::before {
   background: rgba(255, 255, 255, 0.08);
 }
@@ -75,35 +128,29 @@
   color: #a78bfa !important;
 }
 
-/* 7. Selected 胶囊背景 */
 .mpcs-menu .ant-menu-item-selected::before {
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
 }
 
-/* 8. Selected 文字和图标 */
 .mpcs-menu .ant-menu-item-selected,
 .mpcs-menu .ant-menu-item-selected .anticon {
   color: white !important;
 }
 
-/* 9. 去掉默认蓝条 */
 .mpcs-menu .ant-menu-item-selected::after {
   display: none !important;
 }
 
-/* 10. Icon 和文字间距 */
 .mpcs-menu .ant-menu-item .anticon {
   margin-right: 12px;
   transition: color 0.2s ease;
 }
 
-/* 11. Menu Title 内容字体 */
 .mpcs-menu .ant-menu-title-content {
   font-weight: 500;
 }
 
-/* 12. 暗色模式文字 */
 .dark .mpcs-menu .ant-menu-item {
   color: rgba(255, 255, 255, 0.85);
 }

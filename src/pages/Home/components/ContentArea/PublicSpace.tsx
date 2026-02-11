@@ -1,5 +1,5 @@
 export const PublicSpace = () => (
-  <div className="text-center text-2xl font-semibold text-gray-700">
+  <div className="mpcs-text-strong text-center text-2xl font-semibold">
     公共空间页面
   </div>
 );

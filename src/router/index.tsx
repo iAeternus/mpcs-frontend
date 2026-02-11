@@ -2,27 +2,56 @@ import { AuthPage } from "@/pages/Auth";
 import { LoginPage } from "@/pages/Auth/components/Login/LoginPage";
 import { RegisterPage } from "@/pages/Auth/components/Register/RegisterPage";
 import { Home } from "@/pages/Home/index";
-import { createBrowserRouter } from "react-router-dom";
+import { useAppSelector } from "@/store";
+import { selectToken } from "@/store/modules/authStore";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+
+const RequireAuth = () => {
+  const token = useAppSelector(selectToken);
+  if (!token) return <Navigate to="/login" replace />;
+  return <Outlet />;
+};
+
+const RedirectIfAuthed = () => {
+  const token = useAppSelector(selectToken);
+  if (token) return <Navigate to="/" replace />;
+  return <Outlet />;
+};
 
 const router = createBrowserRouter([
   {
     path: "/login",
-    element: <AuthPage />,
+    element: <RedirectIfAuthed />,
     children: [
       {
-        index: true,
-        element: <LoginPage />,
-      },
-      {
-        path: "register",
-        element: <RegisterPage />,
+        path: "",
+        element: <AuthPage />,
+        children: [
+          {
+            index: true,
+            element: <LoginPage />,
+          },
+          {
+            path: "register",
+            element: <RegisterPage />,
+          },
+        ],
       },
     ],
   },
   {
     path: "/",
-    element: <Home />,
-    children: [], // TODO: 子页面加在这里
+    element: <RequireAuth />,
+    children: [
+      {
+        index: true,
+        element: <Home />,
+      },
+    ],
+  },
+  {
+    path: "*",
+    element: <Navigate to="/" replace />,
   },
 ]);
 
