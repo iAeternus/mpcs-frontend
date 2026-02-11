@@ -17,7 +17,12 @@ import {
   previewApi,
   renameFileApi,
 } from "@/apis/file";
-import { uploadFileApi } from "@/apis/upload";
+import {
+  completeUploadApi,
+  initUploadApi,
+  uploadChunkApi,
+  uploadFileApi,
+} from "@/apis/upload";
 import { HierarchyDetailPane } from "./HierarchyDetailPane";
 import { HierarchyTreePane } from "./HierarchyTreePane";
 import { ROOT_OPTION, buildTreeData, formatFileSize } from "./utils";
@@ -25,6 +30,9 @@ import { ROOT_OPTION, buildTreeData, formatFileSize } from "./utils";
 interface FolderHierarchyProps {
   customId: string;
 }
+
+const LARGE_FILE_THRESHOLD = 20 * 1024 * 1024;
+const CHUNK_SIZE = 5 * 1024 * 1024;
 
 export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   customId,
@@ -165,7 +173,62 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     });
   };
 
-  const uploadToFolder = (folder: HierarchyFolder) => {
+  const uploadFile = (folder: HierarchyFolder) => {
+    const calculateFileHash = async (file: File): Promise<string> => {
+      const buffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+      return Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    };
+
+    const uploadLargeFileByChunks = async (parentId: string, file: File) => {
+      const totalSize = file.size;
+      const chunkSize = CHUNK_SIZE;
+      const totalChunks = Math.ceil(totalSize / chunkSize);
+      const fileHash = await calculateFileHash(file);
+
+      const initResp = await initUploadApi({
+        fileName: file.name,
+        fileHash,
+        totalSize,
+        chunkSize,
+        totalChunks,
+      });
+
+      if (!initResp.uploaded) {
+        const uploadId = initResp.uploadId;
+        if (!uploadId) {
+          throw new Error("init upload missing uploadId");
+        }
+
+        const uploaded = new Set(initResp.uploadedChunks ?? []);
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+          if (uploaded.has(chunkIndex)) continue;
+          const start = chunkIndex * chunkSize;
+          const end = Math.min(start + chunkSize, totalSize);
+          const chunk = file.slice(start, end);
+          await uploadChunkApi(uploadId, chunkIndex, chunk);
+        }
+
+        await completeUploadApi({
+          uploadId,
+          parentId,
+          fileHash,
+          totalSize,
+        });
+      }
+    };
+
+    const uploadByFileSize = async (parentId: string, file: File) => {
+      if (file.size >= LARGE_FILE_THRESHOLD) {
+        await uploadLargeFileByChunks(parentId, file);
+        return;
+      }
+
+      await uploadFileApi(parentId, file);
+    };
+
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
@@ -176,7 +239,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
 
       try {
         await Promise.all(
-          selected.map((file) => uploadFileApi(folder.id, file)),
+          selected.map((file) => uploadByFileSize(folder.id, file)),
         );
         message.success(`上传成功，共 ${selected.length} 个文件`);
         await reload();
@@ -189,19 +252,16 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   };
 
   const previewFileInBrowser = async (file: HierarchyFile) => {
-    const blob = await previewApi(file.id);
-    const url = URL.createObjectURL(blob);
-    const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
+    const previewUrl = previewApi(file.id);
+    const openedWindow = window.open(
+      previewUrl,
+      "_blank",
+      "noopener,noreferrer",
+    );
 
     if (!openedWindow) {
-      URL.revokeObjectURL(url);
       message.warning("浏览器拦截了预览窗口，请允许弹窗后重试");
-      return;
     }
-
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 60_000);
   };
 
   const downloadFile = async (file: HierarchyFile) => {
@@ -221,7 +281,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
       {
         key: "new-file",
         label: "新增文件",
-        onClick: () => uploadToFolder(folder),
+        onClick: () => uploadFile(folder),
       },
       {
         key: "new-folder",

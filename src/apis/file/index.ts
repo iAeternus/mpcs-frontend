@@ -54,13 +54,9 @@ export const downloadApi = async (fileId: string): Promise<Blob> => {
 };
 
 /** 预览文件 */
-export const previewApi = async (fileId: string): Promise<Blob> => {
-  const res = await http.request<Blob>({
-    url: `/files/${fileId}/preview`,
-    method: "GET",
-    responseType: "blob",
-  });
-  return res.data;
+export const previewApi = (fileId: string): string => {
+  const baseUrl = (http.defaults.baseURL ?? "").replace(/\/$/, "");
+  return `${baseUrl}/files/${fileId}/preview`;
 };
 
 /** 获取文件路径 */

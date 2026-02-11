@@ -9,6 +9,8 @@ export interface InitUploadCommand {
 export interface CompleteUploadCommand {
   parentId: string;
   uploadId: string;
+  fileHash: string;
+  totalSize: number;
 }
 
 export interface FileUploadResponse {
