@@ -1,4 +1,5 @@
-export interface InitUploadCommand {
+﻿export interface InitUploadCommand {
+  parentId: string;
   fileName: string;
   fileHash: string;
   totalSize: number;
@@ -8,7 +9,9 @@ export interface InitUploadCommand {
 
 export interface CompleteUploadCommand {
   parentId: string;
-  uploadId: string;
+  uploadId?: string | null;
+  fileName?: string | null;
+  storageId?: string | null;
   fileHash: string;
   totalSize: number;
 }
@@ -19,7 +22,8 @@ export interface FileUploadResponse {
 
 export interface InitUploadResponse {
   uploaded: boolean;
-  storageId: StorageId | null;
+  fileId: string | null;
+  storageId: string | null;
   uploadId: string | null;
   uploadedChunks: number[] | null;
 }
@@ -27,12 +31,3 @@ export interface InitUploadResponse {
 export interface UploadChunkResponse {
   chunkIndex: number;
 }
-
-// TODO: 这里要改后端，应该返回一个字符串而不是后端接口
-export interface StorageId {
-  value?: string;
-}
-
-
-
-

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Card, Input, Modal, TreeSelect, message, theme } from "antd";
 import type { MenuProps, TreeSelectProps } from "antd";
 import type { IdNode } from "@/types/common/idtree";
@@ -189,6 +189,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
       const fileHash = await calculateFileHash(file);
 
       const initResp = await initUploadApi({
+        parentId,
         fileName: file.name,
         fileHash,
         totalSize,
