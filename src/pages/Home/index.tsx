@@ -44,7 +44,6 @@ export const Home = () => {
       <Layout className="relative min-h-screen bg-transparent">
         <HomeHeader
           onGoUsage={() => setActive("usage")}
-          onGoPersonalCenter={() => setActive("personal")}
         />
 
         <Layout className="gap-6 px-6 py-6">

@@ -1,30 +1,43 @@
+import { useEffect, useState } from "react";
 import { UserOutlined } from "@ant-design/icons";
 import { Avatar, Dropdown, Layout, Switch } from "antd";
 import { useNavigate } from "react-router-dom";
 import { logoutApi } from "@/apis/login";
+import { fetchMyProfileApi } from "@/apis/user";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { logout } from "@/store/modules/authStore";
 import { toggleTheme } from "@/store/modules/themeStore";
-import type { HomeTabKey } from "@/pages/Home";
 
 const { Header } = Layout;
 
 interface HomeHeaderProps {
   onGoUsage: () => void;
-  onGoPersonalCenter: () => void;
 }
 
-export const HomeHeader: React.FC<HomeHeaderProps> = ({
-  onGoUsage,
-  onGoPersonalCenter,
-}) => {
+export const HomeHeader: React.FC<HomeHeaderProps> = ({ onGoUsage }) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const themeMode = useAppSelector((state) => state.theme.mode);
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await fetchMyProfileApi();
+        setAvatarUrl(profile.avatarUrl ?? "");
+        setUsername(profile.username ?? "");
+      } catch {
+        setAvatarUrl("");
+        setUsername("");
+      }
+    };
+    void loadProfile();
+  }, []);
 
   const handleMenuClick = async (key: string) => {
     if (key === "profile") {
-      onGoPersonalCenter();
+      navigate("/home/user");
       return;
     }
 
@@ -58,14 +71,21 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
 
   return (
     <Header
-      className="
-        mpcs-home-header
-        sticky top-0 z-50
-        flex items-center justify-between px-8
-        bg-white/45 dark:bg-gray-900/50
-        backdrop-blur-xl
-        shadow-sm
-      "
+      className="mpcs-home-header sticky top-0 z-50 flex items-center justify-between px-8 backdrop-blur-xl"
+      style={{
+        backgroundColor:
+          themeMode === "dark"
+            ? "rgba(15, 23, 42, 0.68)"
+            : "rgba(255, 255, 255, 0.88)",
+        borderBottom:
+          themeMode === "dark"
+            ? "1px solid rgba(255,255,255,0.10)"
+            : "1px solid rgba(148,163,184,0.35)",
+        boxShadow:
+          themeMode === "dark"
+            ? "0 8px 24px rgba(0,0,0,0.35)"
+            : "0 8px 20px rgba(15,23,42,0.08)",
+      }}
     >
       <button
         type="button"
@@ -79,16 +99,31 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
         menu={{
           items,
           onClick: ({ key }) => {
-            void handleMenuClick(key as HomeTabKey | "theme" | "logout");
+            void handleMenuClick(key as "profile" | "theme" | "logout");
           },
         }}
         placement="bottomRight"
       >
-        <Avatar
-          size="large"
-          icon={<UserOutlined />}
-          className="cursor-pointer bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md"
-        />
+        <button
+          type="button"
+          className={`flex items-center gap-2 rounded-full px-1 py-1 transition-colors ${
+            themeMode === "dark" ? "hover:bg-white/10" : "hover:bg-slate-100/75"
+          }`}
+        >
+          <Avatar
+            size="large"
+            src={avatarUrl || undefined}
+            icon={<UserOutlined />}
+            className="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md"
+          />
+          <span
+            className={`max-w-[160px] truncate text-sm font-medium ${
+              themeMode === "dark" ? "text-slate-100" : "text-slate-700"
+            }`}
+          >
+            {username || "用户"}
+          </span>
+        </button>
       </Dropdown>
     </Header>
   );
