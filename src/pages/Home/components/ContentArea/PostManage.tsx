@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
+  Dropdown,
   Empty,
   Input,
   List,
@@ -24,6 +25,8 @@ import {
 import type { PublicFilePageQuery } from "@/types/publicfile/command";
 import type { PublicFileResponse } from "@/types/publicfile/query";
 import { unwrapList } from "@/utils/idtree";
+import { downloadApi, previewApi } from "@/apis/file";
+import { SpaceBackground } from "./SpaceBackground";
 
 const DEFAULT_PAGE_QUERY: PublicFilePageQuery = {
   pageIndex: 1,
@@ -192,12 +195,38 @@ export const PostManage = () => {
     });
   };
 
-  return (
-    <div className="relative overflow-hidden py-8">
-      <div className="pointer-events-none absolute -top-24 left-1/4 h-64 w-64 rounded-full bg-cyan-300/30 blur-3xl" />
-      <div className="pointer-events-none absolute right-10 top-10 h-72 w-72 rounded-full bg-indigo-300/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-emerald-200/35 blur-3xl" />
+  const previewFileInBrowser = (fileId: string) => {
+    const previewUrl = previewApi(fileId);
+    const openedWindow = window.open(
+      previewUrl,
+      "_blank",
+      "noopener,noreferrer",
+    );
 
+    if (!openedWindow) {
+      message.warning("浏览器拦截了预览窗口，请允许弹窗后重试");
+    }
+  };
+
+  const downloadFile = async (fileId: string, filename: string) => {
+    try {
+      const blob = await downloadApi(fileId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      message.success("下载成功");
+    } catch {
+      message.error("下载失败");
+    }
+  };
+
+  return (
+    <SpaceBackground paddingClassName="py-8">
       <div className="relative mx-auto w-full max-w-6xl px-4">
         <div className="mb-6 text-center">
           <h2 className="mpcs-text-strong text-3xl font-semibold">发布管理</h2>
@@ -239,53 +268,71 @@ export const PostManage = () => {
                 itemLayout="vertical"
                 dataSource={posts}
                 renderItem={(post, index) => (
-                  <List.Item
+                  <Dropdown
                     key={post.postId ?? `${post.originalFileId}-${post.createdAt}-${index}`}
+                    trigger={["contextMenu"]}
+                    menu={{
+                      items: [
+                        {
+                          key: "preview",
+                          label: "预览",
+                          onClick: () => previewFileInBrowser(post.originalFileId),
+                        },
+                        {
+                          key: "download",
+                          label: "下载",
+                          onClick: () =>
+                            void downloadFile(post.originalFileId, post.title),
+                        },
+                      ],
+                    }}
                   >
-                    <div className="mb-2 flex items-start justify-between gap-3">
-                      <div>
-                        <Typography.Title level={5} className="mb-1">
-                          {post.title}
-                        </Typography.Title>
-                        <Space size={[8, 8]} wrap>
-                          <Tag color="blue">帖子ID: {post.postId ?? "未返回"}</Tag>
-                          <Tag color="geekblue">文件ID: {post.originalFileId}</Tag>
-                          <Tag color="gold">点赞: {post.likeCount}</Tag>
-                          <Tag color="purple">评论: {post.commentCount}</Tag>
-                          <Tag>
-                            发布时间:{" "}
-                            {dayjs(post.createdAt).format("YYYY-MM-DD HH:mm")}
-                          </Tag>
+                    <List.Item>
+                      <div className="mb-2 flex items-start justify-between gap-3">
+                        <div>
+                          <Typography.Title level={5} className="mb-1">
+                            {post.title}
+                          </Typography.Title>
+                          <Space size={[8, 8]} wrap>
+                            <Tag color="blue">帖子ID: {post.postId ?? "未返回"}</Tag>
+                            <Tag color="geekblue">文件ID: {post.originalFileId}</Tag>
+                            <Tag color="gold">点赞: {post.likeCount}</Tag>
+                            <Tag color="purple">评论: {post.commentCount}</Tag>
+                            <Tag>
+                              发布时间:{" "}
+                              {dayjs(post.createdAt).format("YYYY-MM-DD HH:mm")}
+                            </Tag>
+                          </Space>
+                        </div>
+
+                        <Space>
+                          <Button
+                            icon={<EditOutlined />}
+                            onClick={() => onEditTitle(post)}
+                          >
+                            编辑标题
+                          </Button>
+                          <Button
+                            icon={<EditOutlined />}
+                            onClick={() => onEditDescription(post)}
+                          >
+                            编辑简介
+                          </Button>
+                          <Button
+                            danger
+                            icon={<RollbackOutlined />}
+                            onClick={() => onWithdraw(post)}
+                          >
+                            撤回
+                          </Button>
                         </Space>
                       </div>
 
-                      <Space>
-                        <Button
-                          icon={<EditOutlined />}
-                          onClick={() => onEditTitle(post)}
-                        >
-                          编辑标题
-                        </Button>
-                        <Button
-                          icon={<EditOutlined />}
-                          onClick={() => onEditDescription(post)}
-                        >
-                          编辑简介
-                        </Button>
-                        <Button
-                          danger
-                          icon={<RollbackOutlined />}
-                          onClick={() => onWithdraw(post)}
-                        >
-                          撤回
-                        </Button>
-                      </Space>
-                    </div>
-
-                    <Typography.Paragraph className="mb-0 whitespace-pre-wrap">
-                      {post.description || "暂无简介"}
-                    </Typography.Paragraph>
-                  </List.Item>
+                      <Typography.Paragraph className="mb-0 whitespace-pre-wrap">
+                        {post.description || "暂无简介"}
+                      </Typography.Paragraph>
+                    </List.Item>
+                  </Dropdown>
                 )}
               />
             ) : (
@@ -294,6 +341,6 @@ export const PostManage = () => {
           </Spin>
         </Card>
       </div>
-    </div>
+    </SpaceBackground>
   );
 };

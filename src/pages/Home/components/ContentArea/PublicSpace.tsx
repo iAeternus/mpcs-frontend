@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Descriptions,
+  Dropdown,
   Drawer,
   Empty,
   Input,
@@ -36,6 +37,9 @@ import type { PublicFileResponse } from "@/types/publicfile/query";
 import type { CommentResponse } from "@/types/comment/query";
 import type { UserInfoResponse } from "@/types/user/query";
 import { unwrapList } from "@/utils/idtree";
+import { downloadApi, previewApi } from "@/apis/file";
+import { SpaceBackground } from "./SpaceBackground";
+import { useAppSelector } from "@/store";
 
 const DEFAULT_PAGE_QUERY: PublicFilePageQuery = {
   pageIndex: 1,
@@ -134,6 +138,7 @@ const buildCommentTree = (comments: CommentResponse[]): CommentNode[] => {
 };
 
 export const PublicSpace = () => {
+  const themeMode = useAppSelector((state) => state.theme.mode);
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<PublicPost[]>([]);
   const [search, setSearch] = useState("");
@@ -439,7 +444,11 @@ export const PublicSpace = () => {
     return (
       <div
         key={id ?? `${node.username}-${node.createdAt}-${level}`}
-        className={`rounded-2xl border border-white/55 bg-white/65 p-3 ${
+        className={`rounded-2xl border p-3 ${
+          themeMode === "dark"
+            ? "border-white/10 bg-slate-900/55"
+            : "border-white/55 bg-white/65"
+        } ${
           level > 0 ? "ml-6 mt-3" : "mt-3"
         }`}
       >
@@ -507,12 +516,38 @@ export const PublicSpace = () => {
     );
   };
 
-  return (
-    <div className="relative overflow-hidden py-8">
-      <div className="pointer-events-none absolute -top-24 left-1/4 h-64 w-64 rounded-full bg-cyan-300/30 blur-3xl" />
-      <div className="pointer-events-none absolute right-10 top-10 h-72 w-72 rounded-full bg-indigo-300/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-emerald-200/35 blur-3xl" />
+  const previewFileInBrowser = (fileId: string) => {
+    const previewUrl = previewApi(fileId);
+    const openedWindow = window.open(
+      previewUrl,
+      "_blank",
+      "noopener,noreferrer",
+    );
 
+    if (!openedWindow) {
+      message.warning("浏览器拦截了预览窗口，请允许弹窗后重试");
+    }
+  };
+
+  const downloadFile = async (fileId: string, filename: string) => {
+    try {
+      const blob = await downloadApi(fileId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      message.success("下载成功");
+    } catch {
+      message.error("下载失败");
+    }
+  };
+
+  return (
+    <SpaceBackground paddingClassName="py-8">
       <div className="relative mx-auto w-full max-w-6xl px-4">
         <div className="mb-6 text-center">
           <h2 className="mpcs-text-strong text-3xl font-semibold">公共空间</h2>
@@ -557,47 +592,63 @@ export const PublicSpace = () => {
               const liked = post.postId ? likedPostIds.has(post.postId) : false;
               const cardKey =
                 post.postId ?? `${post.originalFileId}-${post.createdAt}-${index}`;
+              const fileMenuItems = [
+                {
+                  key: "preview",
+                  label: "预览",
+                  onClick: () => previewFileInBrowser(post.originalFileId),
+                },
+                {
+                  key: "download",
+                  label: "下载",
+                  onClick: () =>
+                    void downloadFile(post.originalFileId, post.title),
+                },
+              ];
               return (
-                <Card
+                <Dropdown
                   key={cardKey}
-                  className="rounded-3xl border border-white/60 bg-white/65 shadow-lg backdrop-blur"
+                  trigger={["contextMenu"]}
+                  menu={{ items: fileMenuItems }}
                 >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <Typography.Title level={4} className="mb-0">
-                      {post.title}
-                    </Typography.Title>
-                    {renderPublisherTag(post.publisher)}
-                  </div>
+                  <Card className="rounded-3xl border border-white/60 bg-white/65 shadow-lg backdrop-blur">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <Typography.Title level={4} className="mb-0">
+                        {post.title}
+                      </Typography.Title>
+                      {renderPublisherTag(post.publisher)}
+                    </div>
 
-                  <Typography.Paragraph className="mpcs-text-muted min-h-[44px] whitespace-pre-wrap">
-                    {post.description || "暂无简介"}
-                  </Typography.Paragraph>
+                    <Typography.Paragraph className="mpcs-text-muted min-h-[44px] whitespace-pre-wrap">
+                      {post.description || "暂无简介"}
+                    </Typography.Paragraph>
 
-                  <div className="mpcs-text-muted mb-3 text-xs">
-                    发布于 {dayjs(post.createdAt).format("YYYY-MM-DD HH:mm")}
-                  </div>
+                    <div className="mpcs-text-muted mb-3 text-xs">
+                      发布于 {dayjs(post.createdAt).format("YYYY-MM-DD HH:mm")}
+                    </div>
 
-                  <div className="flex items-center justify-between">
-                    <Space>
-                      <Button
-                        icon={liked ? <HeartFilled /> : <HeartOutlined />}
-                        type={liked ? "primary" : "default"}
-                        onClick={() => void onToggleLike(post)}
-                      >
-                        点赞 {post.likeCount}
-                      </Button>
-                      <Button
-                        icon={<CommentOutlined />}
-                        onClick={() => void openComments(post)}
-                      >
-                        评论 {post.commentCount}
-                      </Button>
-                    </Space>
-                    <Typography.Text type="secondary">
-                      帖子ID: {post.postId ?? "未返回"}
-                    </Typography.Text>
-                  </div>
-                </Card>
+                    <div className="flex items-center justify-between">
+                      <Space>
+                        <Button
+                          icon={liked ? <HeartFilled /> : <HeartOutlined />}
+                          type={liked ? "primary" : "default"}
+                          onClick={() => void onToggleLike(post)}
+                        >
+                          点赞 {post.likeCount}
+                        </Button>
+                        <Button
+                          icon={<CommentOutlined />}
+                          onClick={() => void openComments(post)}
+                        >
+                          评论 {post.commentCount}
+                        </Button>
+                      </Space>
+                      <Typography.Text type="secondary">
+                        帖子ID: {post.postId ?? "未返回"}
+                      </Typography.Text>
+                    </div>
+                  </Card>
+                </Dropdown>
               );
             })}
           </div>
@@ -656,6 +707,6 @@ export const PublicSpace = () => {
           </div>
         ) : null}
       </Drawer>
-    </div>
+    </SpaceBackground>
   );
 };

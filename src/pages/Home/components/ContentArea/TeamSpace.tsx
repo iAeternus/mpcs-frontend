@@ -49,6 +49,7 @@ import { InheritancePolicy } from "@/types/group/enums/inheritancePolicy";
 import { Permission } from "@/types/group/enums/permission";
 import { unwrapList } from "@/utils/idtree";
 import { FolderHierarchy } from "../Hierarchy/FolderHierarchy";
+import { SpaceBackground } from "./SpaceBackground";
 
 type JoinRole = "manager" | "member";
 type GrantMode = "single" | "expanded";
@@ -849,11 +850,7 @@ export const TeamSpace = () => {
     : null;
 
   return (
-    <div className="relative overflow-hidden py-10">
-      <div className="pointer-events-none absolute -top-24 left-1/4 h-64 w-64 rounded-full bg-cyan-300/30 blur-3xl" />
-      <div className="pointer-events-none absolute right-10 top-10 h-72 w-72 rounded-full bg-indigo-300/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-emerald-200/35 blur-3xl" />
-
+    <SpaceBackground paddingClassName="py-10">
       <div className="relative mx-auto w-full max-w-6xl px-4">
         <div className="mb-6 text-center">
           <h2 className="mpcs-text-strong text-3xl font-semibold">团队空间</h2>
@@ -990,6 +987,6 @@ export const TeamSpace = () => {
           maxLength={50}
         />
       </Modal>
-    </div>
+    </SpaceBackground>
   );
 };
