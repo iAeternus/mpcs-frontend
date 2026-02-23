@@ -18,6 +18,8 @@ export interface MyCommentPageQuery extends PageQuery {
 }
 
 export interface CommentResponse {
+  commentId?: string;
+  parentId?: string | null;
   username: string;
   postId: string;
   content: string;

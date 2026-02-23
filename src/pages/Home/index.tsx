@@ -3,13 +3,19 @@ import { Layout } from "antd";
 import { PersonalSpace } from "./components/ContentArea/PersonalSpace";
 import { TeamSpace } from "./components/ContentArea/TeamSpace";
 import { PublicSpace } from "./components/ContentArea/PublicSpace";
+import { PostManage } from "./components/ContentArea/PostManage";
 import { UsagePage } from "./components/ContentArea/UsagePage";
 import { HomeHeader } from "./components/Header/HomeHeader";
 import { HomeSidebar } from "./components/SideBar/HomeSidebar";
 import { HomeFooter } from "./components/Footer/HomeFooter";
 
 const { Content } = Layout;
-export type HomeTabKey = "usage" | "personal" | "team" | "public";
+export type HomeTabKey =
+  | "usage"
+  | "personal"
+  | "team"
+  | "public"
+  | "post-manage";
 
 export const Home = () => {
   const [active, setActive] = useState<HomeTabKey>("usage");
@@ -22,6 +28,8 @@ export const Home = () => {
         return <TeamSpace />;
       case "public":
         return <PublicSpace />;
+      case "post-manage":
+        return <PostManage />;
       default:
         return <UsagePage />;
     }

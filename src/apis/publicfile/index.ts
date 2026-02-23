@@ -86,3 +86,15 @@ export const fetchLikeCountApi = async (
   });
   return res.data;
 };
+
+/** 分页获取我发布的文件 */
+export const pageMyApi = async (
+  query: PublicFilePageQuery,
+): Promise<PagedList<PublicFileResponse>> => {
+  const res = await http.request<PagedList<PublicFileResponse>>({
+    url: `/public-files/page/my`,
+    method: "POST",
+    data: query,
+  });
+  return res.data;
+};

@@ -5,6 +5,9 @@ import type { IdNode } from "@/types/common/idtree";
 import type { HierarchyFile, HierarchyFolder } from "@/types/folder/query";
 import { useFolderHierarchy } from "@/hooks/useFolderHierarchy";
 import {
+  postApi,
+} from "@/apis/publicfile";
+import {
   createFolderApi,
   deleteFolderForceApi,
   moveFolderApi,
@@ -451,6 +454,14 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         onClick: async () => {
           await downloadFile(file);
           message.success("下载成功");
+        },
+      },
+      {
+        key: "post",
+        label: "发布到社区",
+        onClick: async () => {
+          await postApi({ fileId: file.id });
+          message.success("发布成功");
         },
       },
       {

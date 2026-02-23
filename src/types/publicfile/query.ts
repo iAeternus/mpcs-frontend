@@ -1,4 +1,5 @@
 export interface PublicFileResponse {
+  postId: string;
   originalFileId: string;
   publisher: string;
   title: string;

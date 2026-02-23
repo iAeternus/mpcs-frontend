@@ -1,5 +1,11 @@
 import type { FC } from "react";
-import { GlobalOutlined, TeamOutlined, UserOutlined, BarChartOutlined } from "@ant-design/icons";
+import {
+  GlobalOutlined,
+  TeamOutlined,
+  UserOutlined,
+  BarChartOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 import { Layout, Menu } from "antd";
 import type { HomeTabKey } from "../..";
 
@@ -16,6 +22,7 @@ export const HomeSidebar: FC<Props> = ({ active, onChange }) => {
     { key: "personal", icon: <UserOutlined />, label: "个人空间" },
     { key: "team", icon: <TeamOutlined />, label: "团队空间" },
     { key: "public", icon: <GlobalOutlined />, label: "公共空间" },
+    { key: "post-manage", icon: <EditOutlined />, label: "发布管理" },
   ];
 
   return (
