@@ -37,9 +37,10 @@ import type { PublicFileResponse } from "@/types/publicfile/query";
 import type { CommentResponse } from "@/types/comment/query";
 import type { UserInfoResponse } from "@/types/user/query";
 import { unwrapList } from "@/utils/idtree";
-import { downloadApi, previewApi } from "@/apis/file";
+import { downloadApi } from "@/apis/file";
 import { SpaceBackground } from "./SpaceBackground";
 import { useAppSelector } from "@/store";
+import { useFilePreview } from "@/hooks/useFilePreview";
 
 const DEFAULT_PAGE_QUERY: PublicFilePageQuery = {
   pageIndex: 1,
@@ -139,6 +140,7 @@ const buildCommentTree = (comments: CommentResponse[]): CommentNode[] => {
 
 export const PublicSpace = () => {
   const themeMode = useAppSelector((state) => state.theme.mode);
+  const { openPreview, previewModal } = useFilePreview();
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<PublicPost[]>([]);
   const [search, setSearch] = useState("");
@@ -516,19 +518,6 @@ export const PublicSpace = () => {
     );
   };
 
-  const previewFileInBrowser = (fileId: string) => {
-    const previewUrl = previewApi(fileId);
-    const openedWindow = window.open(
-      previewUrl,
-      "_blank",
-      "noopener,noreferrer",
-    );
-
-    if (!openedWindow) {
-      message.warning("浏览器拦截了预览窗口，请允许弹窗后重试");
-    }
-  };
-
   const downloadFile = async (fileId: string, filename: string) => {
     try {
       const blob = await downloadApi(fileId);
@@ -596,7 +585,7 @@ export const PublicSpace = () => {
                 {
                   key: "preview",
                   label: "预览",
-                  onClick: () => previewFileInBrowser(post.originalFileId),
+                  onClick: () => openPreview(post.originalFileId, post.title),
                 },
                 {
                   key: "download",
@@ -707,6 +696,7 @@ export const PublicSpace = () => {
           </div>
         ) : null}
       </Drawer>
+      {previewModal}
     </SpaceBackground>
   );
 };

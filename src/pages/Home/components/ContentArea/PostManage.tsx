@@ -25,8 +25,9 @@ import {
 import type { PublicFilePageQuery } from "@/types/publicfile/command";
 import type { PublicFileResponse } from "@/types/publicfile/query";
 import { unwrapList } from "@/utils/idtree";
-import { downloadApi, previewApi } from "@/apis/file";
+import { downloadApi } from "@/apis/file";
 import { SpaceBackground } from "./SpaceBackground";
+import { useFilePreview } from "@/hooks/useFilePreview";
 
 const DEFAULT_PAGE_QUERY: PublicFilePageQuery = {
   pageIndex: 1,
@@ -63,6 +64,7 @@ const normalizeManagedPost = (raw: PublicFileResponse): ManagedPost | null => {
 };
 
 export const PostManage = () => {
+  const { openPreview, previewModal } = useFilePreview();
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<ManagedPost[]>([]);
   const [search, setSearch] = useState("");
@@ -195,19 +197,6 @@ export const PostManage = () => {
     });
   };
 
-  const previewFileInBrowser = (fileId: string) => {
-    const previewUrl = previewApi(fileId);
-    const openedWindow = window.open(
-      previewUrl,
-      "_blank",
-      "noopener,noreferrer",
-    );
-
-    if (!openedWindow) {
-      message.warning("浏览器拦截了预览窗口，请允许弹窗后重试");
-    }
-  };
-
   const downloadFile = async (fileId: string, filename: string) => {
     try {
       const blob = await downloadApi(fileId);
@@ -276,7 +265,7 @@ export const PostManage = () => {
                         {
                           key: "preview",
                           label: "预览",
-                          onClick: () => previewFileInBrowser(post.originalFileId),
+                          onClick: () => openPreview(post.originalFileId, post.title),
                         },
                         {
                           key: "download",
@@ -341,6 +330,7 @@ export const PostManage = () => {
           </Spin>
         </Card>
       </div>
+      {previewModal}
     </SpaceBackground>
   );
 };

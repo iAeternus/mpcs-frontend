@@ -17,7 +17,6 @@ import {
   deleteFileForceApi,
   downloadApi,
   moveFileApi,
-  previewApi,
   renameFileApi,
 } from "@/apis/file";
 import {
@@ -29,6 +28,7 @@ import {
 import { HierarchyDetailPane } from "./HierarchyDetailPane";
 import { HierarchyTreePane } from "./HierarchyTreePane";
 import { ROOT_OPTION, buildTreeData, formatFileSize } from "./utils";
+import { useFilePreview } from "@/hooks/useFilePreview";
 
 interface FolderHierarchyProps {
   customId: string;
@@ -40,6 +40,7 @@ const CHUNK_SIZE = 5 * 1024 * 1024;
 export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   customId,
 }) => {
+  const { openPreview, previewModal } = useFilePreview();
   const { loading, idTree, folderMap, folderNameMap, nodeMap, reload } =
     useFolderHierarchy(customId);
 
@@ -256,16 +257,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   };
 
   const previewFileInBrowser = async (file: HierarchyFile) => {
-    const previewUrl = previewApi(file.id);
-    const openedWindow = window.open(
-      previewUrl,
-      "_blank",
-      "noopener,noreferrer",
-    );
-
-    if (!openedWindow) {
-      message.warning("浏览器拦截了预览窗口，请允许弹窗后重试");
-    }
+    openPreview(file.id, file.filename);
   };
 
   const downloadFile = async (file: HierarchyFile) => {
@@ -489,31 +481,34 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   );
 
   return (
-    <Card className="w-full rounded-3xl border border-white/60 bg-white/60 shadow-xl backdrop-blur">
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <HierarchyTreePane
-          loading={loading}
-          treeData={treeData}
-          currentFolderId={currentFolderId}
-          setCurrentFolderId={setCurrentFolderId}
-          buildFolderMenu={buildFolderMenu}
-          buildFileMenu={buildFileMenu}
-          previewFileInBrowser={previewFileInBrowser}
-        />
+    <>
+      <Card className="w-full rounded-3xl border border-white/60 bg-white/60 shadow-xl backdrop-blur">
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <HierarchyTreePane
+            loading={loading}
+            treeData={treeData}
+            currentFolderId={currentFolderId}
+            setCurrentFolderId={setCurrentFolderId}
+            buildFolderMenu={buildFolderMenu}
+            buildFileMenu={buildFileMenu}
+            previewFileInBrowser={previewFileInBrowser}
+          />
 
-        <HierarchyDetailPane
-          breadcrumbItems={breadcrumbItems}
-          setCurrentFolderId={setCurrentFolderId}
-          childFolders={childFolders}
-          buildFolderMenu={buildFolderMenu}
-          folderCardTextColor={token.colorText}
-          files={files}
-          currentFolderId={currentFolderId}
-          buildFileMenu={buildFileMenu}
-          previewFileInBrowser={previewFileInBrowser}
-          formatFileSize={formatFileSize}
-        />
-      </div>
-    </Card>
+          <HierarchyDetailPane
+            breadcrumbItems={breadcrumbItems}
+            setCurrentFolderId={setCurrentFolderId}
+            childFolders={childFolders}
+            buildFolderMenu={buildFolderMenu}
+            folderCardTextColor={token.colorText}
+            files={files}
+            currentFolderId={currentFolderId}
+            buildFileMenu={buildFileMenu}
+            previewFileInBrowser={previewFileInBrowser}
+            formatFileSize={formatFileSize}
+          />
+        </div>
+      </Card>
+      {previewModal}
+    </>
   );
 };
