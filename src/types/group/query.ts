@@ -23,6 +23,7 @@ export interface GroupOrdinaryMembersResponse {
 export interface OrdinaryMember {
   username: string;
   mobileOrEmail: string;
+  joinedAt: string;
 }
 
 export interface GroupManagersResponse {
@@ -32,6 +33,7 @@ export interface GroupManagersResponse {
 export interface Manager {
   username: string;
   mobileOrEmail: string;
+  joinedAt: string;
 }
 
 export interface GroupResponse {

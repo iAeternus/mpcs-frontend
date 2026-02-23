@@ -6,6 +6,7 @@ import { antdNotification } from "./antdHolder";
 const http = axios.create({
   baseURL: "http://localhost:8082/api/v1.0",
   timeout: 5000,
+  withCredentials: true,
 });
 
 http.interceptors.request.use(

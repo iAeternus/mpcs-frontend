@@ -303,80 +303,84 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
           });
         },
       },
-      {
-        key: "rename",
-        label: "重命名文件夹",
-        onClick: () => {
-          openNameModal({
-            title: "重命名文件夹",
-            placeholder: "请输入新名称",
-            initialValue: folder.folderName,
-            onConfirm: async (name) => {
-              await renameFolderApi(folder.id, {
-                customId,
-                newName: name,
-              });
-              message.success("重命名成功");
-              await reload();
+      ...(folder.id === rootFolderId
+        ? []
+        : [
+            {
+              key: "rename",
+              label: "重命名文件夹",
+              onClick: () => {
+                openNameModal({
+                  title: "重命名文件夹",
+                  placeholder: "请输入新名称",
+                  initialValue: folder.folderName,
+                  onConfirm: async (name) => {
+                    await renameFolderApi(folder.id, {
+                      customId,
+                      newName: name,
+                    });
+                    message.success("重命名成功");
+                    await reload();
+                  },
+                });
+              },
             },
-          });
-        },
-      },
-      {
-        key: "move",
-        label: "移动文件夹",
-        onClick: () => {
-          let targetId: string | null | undefined;
-          const excluded = getDescendantIds(folder.id);
-          excluded.add(folder.id);
-          const treeData = moveFolderTreeData(excluded);
+            {
+              key: "move",
+              label: "移动文件夹",
+              onClick: () => {
+                let targetId: string | null | undefined;
+                const excluded = getDescendantIds(folder.id);
+                excluded.add(folder.id);
+                const treeData = moveFolderTreeData(excluded);
 
-          Modal.confirm({
-            title: "移动文件夹",
-            content: (
-              <TreeSelect
-                style={{ width: "100%" }}
-                placeholder="选择目标文件夹"
-                treeData={treeData}
-                treeDefaultExpandAll
-                onChange={(value: string) => {
-                  targetId = value === ROOT_OPTION ? null : value;
-                }}
-              />
-            ),
-            onOk: async () => {
-              if (targetId === undefined) {
-                message.warning("请选择目标文件夹");
-                return Promise.reject();
-              }
+                Modal.confirm({
+                  title: "移动文件夹",
+                  content: (
+                    <TreeSelect
+                      style={{ width: "100%" }}
+                      placeholder="选择目标文件夹"
+                      treeData={treeData}
+                      treeDefaultExpandAll
+                      onChange={(value: string) => {
+                        targetId = value === ROOT_OPTION ? null : value;
+                      }}
+                    />
+                  ),
+                  onOk: async () => {
+                    if (targetId === undefined) {
+                      message.warning("请选择目标文件夹");
+                      return Promise.reject();
+                    }
 
-              await moveFolderApi({
-                customId,
-                folderId: folder.id,
-                newParentId: targetId,
-              });
-              message.success("移动成功");
-              await reload();
+                    await moveFolderApi({
+                      customId,
+                      folderId: folder.id,
+                      newParentId: targetId,
+                    });
+                    message.success("移动成功");
+                    await reload();
+                  },
+                });
+              },
             },
-          });
-        },
-      },
-      {
-        key: "delete",
-        danger: true,
-        label: "强制删除文件夹",
-        onClick: () => {
-          Modal.confirm({
-            title: "确认强制删除文件夹？",
-            content: folder.folderName,
-            onOk: async () => {
-              await deleteFolderForceApi(folder.id, { customId });
-              message.success("删除成功");
-              await reload();
+            {
+              key: "delete",
+              danger: true,
+              label: "强制删除文件夹",
+              onClick: () => {
+                Modal.confirm({
+                  title: "确认强制删除文件夹？",
+                  content: folder.folderName,
+                  onOk: async () => {
+                    await deleteFolderForceApi(folder.id, { customId });
+                    message.success("删除成功");
+                    await reload();
+                  },
+                });
+              },
             },
-          });
-        },
-      },
+          ]),
     ],
   });
 
