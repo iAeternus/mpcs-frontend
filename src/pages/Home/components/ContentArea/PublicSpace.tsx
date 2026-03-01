@@ -619,7 +619,7 @@ export const PublicSpace = () => {
           </p>
         </div>
 
-        <Card className="mb-6 rounded-3xl border border-white/60 bg-white/65 shadow-lg backdrop-blur">
+        <Card className="mb-6 rounded-3xl border border-white/60 bg-white/65 backdrop-blur">
           <div className="flex flex-col gap-3 md:flex-row">
             <Input.Search
               allowClear
