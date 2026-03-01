@@ -236,17 +236,15 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
 
     const input = document.createElement("input");
     input.type = "file";
-    input.multiple = true;
+    input.multiple = false;
 
     input.onchange = async () => {
-      const selected = Array.from(input.files ?? []);
-      if (!selected.length) return;
+      const file = input.files?.[0];
+      if (!file) return;
 
       try {
-        await Promise.all(
-          selected.map((file) => uploadByFileSize(folder.id, file)),
-        );
-        message.success(`上传成功，共 ${selected.length} 个文件`);
+        await uploadByFileSize(folder.id, file);
+        message.success("上传成功");
         await reload();
       } catch {
         message.error("上传失败");

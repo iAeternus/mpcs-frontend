@@ -33,7 +33,7 @@ export const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-500 via-indigo-500 to-purple-600 relative overflow-hidden">
+    <div className="auth-light-inputs min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-500 via-indigo-500 to-purple-600 relative overflow-hidden">
       <div className="absolute -top-32 -left-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
       <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
 

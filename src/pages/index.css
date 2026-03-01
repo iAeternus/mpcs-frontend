@@ -154,3 +154,73 @@
 .dark .mpcs-menu .ant-menu-item {
   color: rgba(255, 255, 255, 0.85);
 }
+
+/* Auth forms: keep inputs light in both light/dark theme modes */
+.auth-light-inputs .ant-input,
+.auth-light-inputs .ant-input-affix-wrapper,
+.auth-light-inputs .ant-input-affix-wrapper .ant-input,
+.auth-light-inputs .ant-input-password {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+.auth-light-inputs .ant-input::placeholder,
+.auth-light-inputs .ant-input-affix-wrapper .ant-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.auth-light-inputs .ant-input-affix-wrapper .ant-input-prefix,
+.auth-light-inputs .ant-input-affix-wrapper .ant-input-suffix {
+  color: #64748b !important;
+}
+
+.auth-light-inputs .ant-input:hover,
+.auth-light-inputs .ant-input-affix-wrapper:hover {
+  border-color: #818cf8 !important;
+}
+
+.auth-light-inputs .ant-input:focus,
+.auth-light-inputs .ant-input-affix-wrapper-focused,
+.auth-light-inputs .ant-input-affix-wrapper:focus-within {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Auth pages should be fully isolated from global dark theme */
+.auth-theme-fixed {
+  color: #1f2937 !important;
+}
+
+.auth-theme-fixed .ant-typography,
+.auth-theme-fixed .ant-form-item-label > label,
+.auth-theme-fixed .ant-checkbox-wrapper,
+.auth-theme-fixed .ant-checkbox + span,
+.auth-theme-fixed .ant-btn-link {
+  color: #1f2937 !important;
+}
+
+.auth-theme-fixed .ant-form-item-explain-error {
+  color: #ef4444 !important;
+}
+
+.auth-theme-fixed .ant-btn-primary {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.auth-theme-fixed .ant-btn:not(.ant-btn-primary):not(.ant-btn-link) {
+  background: #ffffff !important;
+  border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+.auth-theme-fixed .ant-btn:not(.ant-btn-primary):not(.ant-btn-link):hover {
+  color: #111827 !important;
+  border-color: #818cf8 !important;
+  background: #ffffff !important;
+}
+
+.auth-theme-fixed .ant-checkbox-inner {
+  background: #ffffff !important;
+  border-color: rgba(100, 116, 139, 0.7) !important;
+}

@@ -19,7 +19,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+    <div className="auth-light-inputs min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
       {/* 光斑 */}
       <div className="absolute -top-32 -left-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
       <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
