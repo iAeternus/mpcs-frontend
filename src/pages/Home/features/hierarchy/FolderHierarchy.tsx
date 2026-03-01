@@ -25,9 +25,6 @@ import {
   uploadChunkApi,
   uploadFileApi,
 } from "@/apis/upload";
-// import { HierarchyDetailPane } from "./HierarchyDetailPane";
-// import { HierarchyTreePane } from "./HierarchyTreePane";
-// import { ROOT_OPTION, buildTreeData, formatFileSize } from "./utils";
 import { useFilePreview } from "@/hooks/useFilePreview";
 import { buildTreeData, formatFileSize, ROOT_OPTION } from "./utils";
 import { HierarchyTreePane } from "./HierarchyTreePane";
