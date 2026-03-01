@@ -42,9 +42,7 @@ export const Home = () => {
       <div className="absolute -bottom-40 -right-40 h-[400px] w-[400px] rounded-full bg-white/20 blur-3xl" />
 
       <Layout className="relative min-h-screen bg-transparent">
-        <HomeHeader
-          onGoUsage={() => setActive("usage")}
-        />
+        <HomeHeader onGoUsage={() => setActive("usage")} />
 
         <Layout className="gap-6 px-6 py-6">
           <HomeSidebar active={active} onChange={setActive} />
@@ -58,8 +56,11 @@ export const Home = () => {
                 bg-white/80 dark:bg-white/5
                 backdrop-blur-xl
                 shadow-[0_20px_60px_rgba(0,0,0,0.25)]
-                p-8
               "
+              style={{
+                padding: 0,
+                overflow: "hidden",
+              }}
             >
               {renderContent()}
             </div>

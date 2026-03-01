@@ -24,7 +24,12 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { pageApi } from "@/apis/publicfile";
-import { fetchLikedCountApi, likeApi, unlikeApi } from "@/apis/like";
+import {
+  fetchLikedCountApi,
+  fetchLikeStatusesBatchApi,
+  likeApi,
+  unlikeApi,
+} from "@/apis/like";
 import {
   createCommentApi,
   deleteCommentApi,
@@ -192,9 +197,10 @@ export const PublicSpace = () => {
         .map(normalizePost)
         .filter((item): item is PublicPost => item !== null);
       setPosts(normalized);
-      if (normalized.length) {
-        void refreshPostsRealtimeCount(normalized);
-      }
+      void Promise.all([
+        refreshLikedStatus(normalized),
+        refreshPostsRealtimeCount(normalized),
+      ]);
     } finally {
       setLoading(false);
     }
@@ -253,6 +259,19 @@ export const PublicSpace = () => {
 
     void loadPublisherInfos();
   }, [posts, publisherInfoMap]);
+
+  useEffect(() => {
+    const validPostIds = new Set(
+      posts
+        .map((post) => post.postId)
+        .filter((postId): postId is string => Boolean(postId)),
+    );
+    setLikedPostIds((prev) => {
+      const next = new Set(Array.from(prev).filter((id) => validPostIds.has(id)));
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [posts]);
 
   const updateSinglePost = (
     postId: string,
@@ -368,6 +387,27 @@ export const PublicSpace = () => {
       return allComments;
     } finally {
       setCommentLoading(false);
+    }
+  };
+
+  const refreshLikedStatus = async (postList: PublicPost[]) => {
+    const postIds = postList
+      .map((post) => post.postId)
+      .filter((postId): postId is string => Boolean(postId));
+    if (!postIds.length) {
+      setLikedPostIds(new Set());
+      return;
+    }
+
+    try {
+      const resp = await fetchLikeStatusesBatchApi({ postIds });
+      const likedIds = (resp.statuses ?? [])
+        .filter((item) => item.liked)
+        .map((item) => item.postId)
+        .filter((postId) => POST_ID_REGEX.test(postId));
+      setLikedPostIds(new Set(likedIds));
+    } catch {
+      setLikedPostIds(new Set());
     }
   };
 

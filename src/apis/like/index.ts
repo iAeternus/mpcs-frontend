@@ -1,4 +1,8 @@
-import type { LikedCountResponse } from "@/types/like/query";
+import type {
+  LikeStatusBatchQuery,
+  LikeStatusesResponse,
+  LikedCountResponse,
+} from "@/types/like/query";
 import { http } from "@/utils/http";
 
 /** 点赞 */
@@ -24,6 +28,18 @@ export const fetchLikedCountApi = async (
   const res = await http.request<LikedCountResponse>({
     url: `/like/${postId}/count`,
     method: "POST",
+  });
+  return res.data;
+};
+
+/** 批量获取当前用户的点赞状态 */
+export const fetchLikeStatusesBatchApi = async (
+  query: LikeStatusBatchQuery,
+): Promise<LikeStatusesResponse> => {
+  const res = await http.request<LikeStatusesResponse>({
+    url: "/like/status/batch",
+    method: "POST",
+    data: query,
   });
   return res.data;
 };

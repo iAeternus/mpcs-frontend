@@ -15,7 +15,7 @@ export const SpaceBackground = ({
 
   return (
     <div
-      className={`${className ?? ""} relative overflow-hidden ${paddingClassName} ${
+      className={`${className ?? ""} relative h-full min-h-[75vh] overflow-hidden ${paddingClassName} ${
         themeMode === "dark"
           ? "bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0b1020]"
           : "bg-gradient-to-br from-slate-50 via-white to-sky-50"
