@@ -48,7 +48,7 @@ import type {
 import { InheritancePolicy } from "@/types/group/enums/inheritancePolicy";
 import { Permission } from "@/types/group/enums/permission";
 import { unwrapList } from "@/utils/idtree";
-import { FolderHierarchy } from "../Hierarchy/FolderHierarchy";
+import { FolderHierarchy } from "../hierarchy/FolderHierarchy";
 import { SpaceBackground } from "./SpaceBackground";
 
 type JoinRole = "manager" | "member";

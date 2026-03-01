@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Layout } from "antd";
-import { PersonalSpace } from "./components/ContentArea/PersonalSpace";
-import { TeamSpace } from "./components/ContentArea/TeamSpace";
-import { PublicSpace } from "./components/ContentArea/PublicSpace";
-import { PostManage } from "./components/ContentArea/PostManage";
-import { UsagePage } from "./components/ContentArea/UsagePage";
-import { HomeHeader } from "./components/Header/HomeHeader";
-import { HomeSidebar } from "./components/SideBar/HomeSidebar";
-import { HomeFooter } from "./components/Footer/HomeFooter";
+import { PersonalSpace } from "./features/content/PersonalSpace";
+import { TeamSpace } from "./features/content/TeamSpace";
+import { PublicSpace } from "./features/content/PublicSpace";
+import { PostManage } from "./features/content/PostManage";
+import { UsagePage } from "./features/content/UsagePage";
+import { HomeHeader } from "./layout/HomeHeader";
+import { HomeSidebar } from "./layout/HomeSidebar";
+import { HomeFooter } from "./layout/HomeFooter";
 
 const { Content } = Layout;
 export type HomeTabKey =

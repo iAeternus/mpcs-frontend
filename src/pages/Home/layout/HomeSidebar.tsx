@@ -7,7 +7,7 @@ import {
   EditOutlined,
 } from "@ant-design/icons";
 import { Layout, Menu } from "antd";
-import type { HomeTabKey } from "../..";
+import type { HomeTabKey } from "../index";
 
 const { Sider } = Layout;
 

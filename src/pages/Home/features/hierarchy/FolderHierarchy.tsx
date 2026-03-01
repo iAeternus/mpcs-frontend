@@ -25,10 +25,13 @@ import {
   uploadChunkApi,
   uploadFileApi,
 } from "@/apis/upload";
-import { HierarchyDetailPane } from "./HierarchyDetailPane";
-import { HierarchyTreePane } from "./HierarchyTreePane";
-import { ROOT_OPTION, buildTreeData, formatFileSize } from "./utils";
+// import { HierarchyDetailPane } from "./HierarchyDetailPane";
+// import { HierarchyTreePane } from "./HierarchyTreePane";
+// import { ROOT_OPTION, buildTreeData, formatFileSize } from "./utils";
 import { useFilePreview } from "@/hooks/useFilePreview";
+import { buildTreeData, formatFileSize, ROOT_OPTION } from "./utils";
+import { HierarchyTreePane } from "./HierarchyTreePane";
+import { HierarchyDetailPane } from "./HierarchyDetailPane";
 
 interface FolderHierarchyProps {
   customId: string;
@@ -81,17 +84,6 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
       name: folderNameMap[id] ?? "未命名文件夹",
     }));
   }, [currentFolder, folderNameMap]);
-
-  const folderOptions = useMemo(
-    () => [
-      { label: "根目录", value: ROOT_OPTION },
-      ...Object.values(folderMap).map((folder) => ({
-        label: folder.folderName,
-        value: folder.id,
-      })),
-    ],
-    [folderMap],
-  );
 
   const moveFolderTreeData = useMemo(() => {
     const mapToTree = (
@@ -377,10 +369,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     ],
   });
 
-  const buildFileMenu = (
-    file: HierarchyFile,
-    parentFolderId: string,
-  ): MenuProps => ({
+  const buildFileMenu = (file: HierarchyFile): MenuProps => ({
     items: [
       {
         key: "rename",

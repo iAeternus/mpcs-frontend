@@ -11,7 +11,7 @@ interface HierarchyDetailPaneProps {
   folderCardTextColor: string;
   files: HierarchyFile[];
   currentFolderId: string | null;
-  buildFileMenu: (file: HierarchyFile, parentFolderId: string) => MenuProps;
+  buildFileMenu: (file: HierarchyFile) => MenuProps;
   previewFileInBrowser: (file: HierarchyFile) => Promise<void>;
   formatFileSize: (size: number) => string;
 }
@@ -82,7 +82,7 @@ export const HierarchyDetailPane: React.FC<HierarchyDetailPaneProps> = ({
             trigger={["contextMenu"]}
             menu={
               currentFolderId
-                ? buildFileMenu(file, currentFolderId)
+                ? buildFileMenu(file)
                 : { items: [] }
             }
           >

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchMyUserInfoApi } from "@/apis/user";
 import type { UserInfoResponse } from "@/types/user/query";
-import { FolderHierarchy } from "../Hierarchy/FolderHierarchy";
+import { FolderHierarchy } from "../hierarchy/FolderHierarchy";
 import { SpaceBackground } from "./SpaceBackground";
 
 export const PersonalSpace = () => {

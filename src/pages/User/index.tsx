@@ -17,7 +17,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { fetchMyProfileApi, uploadMyAvatarApi } from "@/apis/user";
 import type { UserProfileResponse } from "@/types/user/query";
-import { SpaceBackground } from "@/pages/Home/components/ContentArea/SpaceBackground";
+import { SpaceBackground } from "@/pages/Home/features/content/SpaceBackground";
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 

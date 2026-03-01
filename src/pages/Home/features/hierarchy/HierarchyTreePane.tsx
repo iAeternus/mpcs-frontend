@@ -9,7 +9,7 @@ interface HierarchyTreePaneProps {
   currentFolderId: string | null;
   setCurrentFolderId: (folderId: string) => void;
   buildFolderMenu: (folder: HierarchyFolder) => MenuProps;
-  buildFileMenu: (file: HierarchyFile, parentFolderId: string) => MenuProps;
+  buildFileMenu: (file: HierarchyFile) => MenuProps;
   previewFileInBrowser: (file: HierarchyFile) => Promise<void>;
 }
 
@@ -69,10 +69,7 @@ export const HierarchyTreePane: React.FC<HierarchyTreePaneProps> = ({
               return (
                 <Dropdown
                   trigger={["contextMenu"]}
-                  menu={buildFileMenu(
-                    currentNode.file,
-                    currentNode.parentFolderId,
-                  )}
+                  menu={buildFileMenu(currentNode.file)}
                 >
                   <span className="block select-none pr-2">
                     📄 {currentNode.title}
