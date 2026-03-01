@@ -23,7 +23,7 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { pageApi, fetchCommentCountApi } from "@/apis/publicfile";
+import { pageApi } from "@/apis/publicfile";
 import { fetchLikedCountApi, likeApi, unlikeApi } from "@/apis/like";
 import {
   createCommentApi,
@@ -192,6 +192,9 @@ export const PublicSpace = () => {
         .map(normalizePost)
         .filter((item): item is PublicPost => item !== null);
       setPosts(normalized);
+      if (normalized.length) {
+        void refreshPostsRealtimeCount(normalized);
+      }
     } finally {
       setLoading(false);
     }
@@ -309,65 +312,88 @@ export const PublicSpace = () => {
     }));
   };
 
-  const refreshCommentCount = async (postId: string) => {
-    const commentResp = await fetchCommentCountApi(postId);
-    updateSinglePost(postId, (post) => ({
-      ...post,
-      commentCount: commentResp.commentCount,
-    }));
-  };
+  const fetchAllComments = async (postId: string): Promise<CommentResponse[]> => {
+    const rootResp = await pageCommentsApi({
+      pageIndex: 1,
+      pageSize: 100,
+      postId,
+      sortedBy: "createdAt",
+      ascSort: true,
+    });
 
-  const loadComments = async (postId: string) => {
-    setCommentLoading(true);
-    try {
-      const rootResp = await pageCommentsApi({
+    const allComments: CommentResponse[] = [...(rootResp.data ?? [])];
+    const queue: string[] = (rootResp.data ?? [])
+      .map((comment) => normalizeCommentId(comment))
+      .filter((id): id is string => id !== null);
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const parentId = queue.shift();
+      if (!parentId || visited.has(parentId)) continue;
+      visited.add(parentId);
+
+      const replyResp = await pageDirectRepliesApi({
         pageIndex: 1,
         pageSize: 100,
-        postId,
+        parentId,
         sortedBy: "createdAt",
         ascSort: true,
       });
 
-      const allComments: CommentResponse[] = [...(rootResp.data ?? [])];
-      const queue: string[] = (rootResp.data ?? [])
-        .map((comment) => normalizeCommentId(comment))
-        .filter((id): id is string => id !== null);
-      const visited = new Set<string>();
+      const replies = (replyResp.data ?? []).filter(
+        (item) => normalizeCommentId(item) !== parentId,
+      );
+      allComments.push(...replies);
 
-      while (queue.length > 0) {
-        const parentId = queue.shift();
-        if (!parentId || visited.has(parentId)) continue;
-        visited.add(parentId);
-
-        const replyResp = await pageDirectRepliesApi({
-          pageIndex: 1,
-          pageSize: 100,
-          parentId,
-          sortedBy: "createdAt",
-          ascSort: true,
-        });
-
-        const replies = (replyResp.data ?? []).filter(
-          (item) => normalizeCommentId(item) !== parentId,
-        );
-        allComments.push(...replies);
-
-        replies.forEach((item) => {
-          const id = normalizeCommentId(item);
-          if (id && !visited.has(id)) queue.push(id);
-        });
-      }
-
-      const unique = new Map<string, CommentResponse>();
-      allComments.forEach((item, index) => {
-        const id =
-          normalizeCommentId(item) ?? `fallback:${index}:${item.createdAt}`;
-        if (!unique.has(id)) unique.set(id, item);
+      replies.forEach((item) => {
+        const id = normalizeCommentId(item);
+        if (id && !visited.has(id)) queue.push(id);
       });
-      setComments(Array.from(unique.values()));
+    }
+
+    const unique = new Map<string, CommentResponse>();
+    allComments.forEach((item, index) => {
+      const id = normalizeCommentId(item) ?? `fallback:${index}:${item.createdAt}`;
+      if (!unique.has(id)) unique.set(id, item);
+    });
+
+    return Array.from(unique.values());
+  };
+
+  const loadComments = async (postId: string): Promise<CommentResponse[]> => {
+    setCommentLoading(true);
+    try {
+      const allComments = await fetchAllComments(postId);
+      setComments(allComments);
+      return allComments;
     } finally {
       setCommentLoading(false);
     }
+  };
+
+  const refreshPostsRealtimeCount = async (postList: PublicPost[]) => {
+    await Promise.allSettled(
+      postList
+        .filter((post): post is PublicPost & { postId: string } => !!post.postId)
+        .map(async (post) => {
+          const [likeResult, commentResult] = await Promise.allSettled([
+            fetchLikedCountApi(post.postId),
+            fetchAllComments(post.postId),
+          ]);
+
+          updateSinglePost(post.postId, (current) => ({
+            ...current,
+            likeCount:
+              likeResult.status === "fulfilled"
+                ? likeResult.value.count
+                : current.likeCount,
+            commentCount:
+              commentResult.status === "fulfilled"
+                ? commentResult.value.length
+                : current.commentCount,
+          }));
+        }),
+    );
   };
 
   const openComments = async (post: PublicPost) => {
@@ -427,7 +453,11 @@ export const PublicSpace = () => {
       setCommentInput("");
     }
 
-    await Promise.all([loadComments(postId), refreshCommentCount(postId)]);
+    const allComments = await loadComments(postId);
+    updateSinglePost(postId, (post) => ({
+      ...post,
+      commentCount: allComments.length,
+    }));
   };
 
   const onDeleteComment = async (postId: string, commentId?: string) => {
@@ -437,7 +467,11 @@ export const PublicSpace = () => {
     }
 
     await deleteCommentApi({ postId, commentId });
-    await Promise.all([loadComments(postId), refreshCommentCount(postId)]);
+    const allComments = await loadComments(postId);
+    updateSinglePost(postId, (post) => ({
+      ...post,
+      commentCount: allComments.length,
+    }));
   };
 
   const renderCommentNode = (postId: string, node: CommentNode, level = 0) => {
