@@ -29,13 +29,16 @@ import { useFilePreview } from "@/hooks/useFilePreview";
 import { buildTreeData, formatFileSize, ROOT_OPTION } from "./utils";
 import { HierarchyTreePane } from "./HierarchyTreePane";
 import { HierarchyDetailPane } from "./HierarchyDetailPane";
+import SparkMD5 from "spark-md5";
 
 interface FolderHierarchyProps {
   customId: string;
 }
 
 const LARGE_FILE_THRESHOLD = 20 * 1024 * 1024;
-const CHUNK_SIZE = 5 * 1024 * 1024;
+const CHUNK_SIZE = 10 * 1024 * 1024;
+const UPLOAD_CONCURRENCY = 2;
+const HASH_CHUNK_SIZE = 10 * 1024 * 1024;
 
 export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   customId,
@@ -167,19 +170,72 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   };
 
   const uploadFile = (folder: HierarchyFolder) => {
-    const calculateFileHash = async (file: File): Promise<string> => {
-      const buffer = await file.arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-      return Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+    const calculateFileHash = async (
+      file: File,
+      onProgress: (percent: number) => void,
+    ): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const spark = new SparkMD5.ArrayBuffer();
+        let offset = 0;
+        const reader = new FileReader();
+        const loadNext = () => {
+          const slice = file.slice(offset, offset + HASH_CHUNK_SIZE);
+          reader.readAsArrayBuffer(slice);
+        };
+        reader.onload = (e) => {
+          spark.append(e.target?.result as ArrayBuffer);
+          offset += HASH_CHUNK_SIZE;
+          const percent = Math.min(Math.round((offset / file.size) * 100), 100);
+          onProgress(percent);
+          if (offset < file.size) {
+            loadNext();
+          } else {
+            resolve(spark.end());
+          }
+        };
+        reader.onerror = () => reject(reader.error);
+        loadNext();
+      });
     };
 
-    const uploadLargeFileByChunks = async (parentId: string, file: File) => {
+    const uploadChunkWithRetry = async (
+      uploadId: string,
+      chunkIndex: number,
+      chunk: Blob,
+      retries = 3,
+    ): Promise<void> => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          await uploadChunkApi(uploadId, chunkIndex, chunk);
+          return;
+        } catch (err) {
+          if (i === retries - 1) throw err;
+          await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+        }
+      }
+    };
+
+    const uploadLargeFileByChunks = async (
+      parentId: string,
+      file: File,
+    ) => {
       const totalSize = file.size;
       const chunkSize = CHUNK_SIZE;
       const totalChunks = Math.ceil(totalSize / chunkSize);
-      const fileHash = await calculateFileHash(file);
+
+      message.loading({
+        content: "正在计算文件指纹...",
+        key: "upload-progress",
+        duration: 0,
+      });
+
+      const fileHash = await calculateFileHash(file, (percent) => {
+        message.loading({
+          content: `正在计算文件指纹... ${percent}%`,
+          key: "upload-progress",
+          duration: 0,
+        });
+      });
 
       const initResp = await initUploadApi({
         parentId,
@@ -190,28 +246,67 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         totalChunks,
       });
 
-      if (!initResp.uploaded) {
-        const uploadId = initResp.uploadId;
-        if (!uploadId) {
-          throw new Error("init upload missing uploadId");
-        }
+      if (initResp.uploaded) {
+        message.success({ content: "文件已上传", key: "upload-progress" });
+        return;
+      }
 
-        const uploaded = new Set(initResp.uploadedChunks ?? []);
-        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-          if (uploaded.has(chunkIndex)) continue;
-          const start = chunkIndex * chunkSize;
-          const end = Math.min(start + chunkSize, totalSize);
-          const chunk = file.slice(start, end);
-          await uploadChunkApi(uploadId, chunkIndex, chunk);
-        }
+      const uploadId = initResp.uploadId;
+      if (!uploadId) {
+        throw new Error("init upload missing uploadId");
+      }
 
+      const uploadedSet = new Set(initResp.uploadedChunks ?? []);
+      const pendingChunks: number[] = [];
+      for (let i = 0; i < totalChunks; i++) {
+        if (!uploadedSet.has(i)) pendingChunks.push(i);
+      }
+
+      if (pendingChunks.length === 0) {
+        message.loading({
+          content: "合并文件中...",
+          key: "upload-progress",
+          duration: 0,
+        });
         await completeUploadApi({
           uploadId,
           parentId,
           fileHash,
           totalSize,
         });
+        message.success({ content: "上传完成", key: "upload-progress" });
+        return;
       }
+
+      const uploadChunk = async (
+        chunkIndex: number,
+      ): Promise<void> => {
+        const start = chunkIndex * chunkSize;
+        const end = Math.min(start + chunkSize, totalSize);
+        const chunk = file.slice(start, end);
+        await uploadChunkWithRetry(uploadId, chunkIndex, chunk);
+      };
+
+      let completedChunks = uploadedSet.size;
+      for (let i = 0; i < pendingChunks.length; i += UPLOAD_CONCURRENCY) {
+        const batch = pendingChunks.slice(i, i + UPLOAD_CONCURRENCY);
+        await Promise.all(batch.map((idx) => uploadChunk(idx)));
+        completedChunks += batch.length;
+        message.loading({
+          content: `上传中: ${completedChunks}/${totalChunks}`,
+          key: "upload-progress",
+          duration: 0,
+        });
+      }
+
+      message.loading({ content: "合并文件中...", key: "upload-progress", duration: 0 });
+      await completeUploadApi({
+        uploadId,
+        parentId,
+        fileHash,
+        totalSize,
+      });
+      message.success({ content: "上传完成", key: "upload-progress" });
     };
 
     const uploadByFileSize = async (parentId: string, file: File) => {

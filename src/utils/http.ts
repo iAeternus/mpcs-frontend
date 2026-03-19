@@ -5,9 +5,11 @@ import { antdNotification } from "./antdHolder";
 
 const http = axios.create({
   baseURL: "http://localhost:8082/api/v1.0",
-  timeout: 5000,
+  timeout: 30000,
   withCredentials: true,
 });
+
+export const LARGE_FILE_TIMEOUT = 600000;
 
 http.interceptors.request.use(
   (config) => {

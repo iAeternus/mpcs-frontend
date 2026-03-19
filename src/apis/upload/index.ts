@@ -5,7 +5,7 @@
   InitUploadResponse,
   UploadChunkResponse,
 } from "@/types/upload/command";
-import { http } from "@/utils/http";
+import { http, LARGE_FILE_TIMEOUT } from "@/utils/http";
 
 /** 普通上传 */
 export const uploadFileApi = async (
@@ -20,6 +20,7 @@ export const uploadFileApi = async (
     method: "POST",
     params: { parentId },
     data: formData,
+    timeout: LARGE_FILE_TIMEOUT,
   });
 
   return res.data;
@@ -51,6 +52,7 @@ export const uploadChunkApi = async (
     method: "POST",
     params: { uploadId, chunkIndex },
     data: formData,
+    timeout: LARGE_FILE_TIMEOUT,
   });
 
   return res.data;
@@ -64,6 +66,7 @@ export const completeUploadApi = async (
     url: "/files/upload/complete",
     method: "POST",
     data: cmd,
+    timeout: LARGE_FILE_TIMEOUT,
   });
   return res.data;
 };
