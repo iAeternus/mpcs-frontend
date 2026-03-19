@@ -36,8 +36,8 @@ interface FolderHierarchyProps {
 }
 
 const LARGE_FILE_THRESHOLD = 20 * 1024 * 1024;
-const CHUNK_SIZE = 10 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = 2;
+const CHUNK_SIZE = 50 * 1024 * 1024;
+const UPLOAD_CONCURRENCY = 3;
 const HASH_CHUNK_SIZE = 10 * 1024 * 1024;
 
 export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
@@ -278,6 +278,15 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         return;
       }
 
+      let ws: WebSocket | null = null;
+      const wsUrl = `ws://localhost:8082/ws/upload/${uploadId}`;
+
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch {
+        console.warn("WebSocket connection failed, progress will be updated locally");
+      }
+
       const uploadChunk = async (
         chunkIndex: number,
       ): Promise<void> => {
@@ -300,6 +309,11 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
       }
 
       message.loading({ content: "合并文件中...", key: "upload-progress", duration: 0 });
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+
       await completeUploadApi({
         uploadId,
         parentId,
