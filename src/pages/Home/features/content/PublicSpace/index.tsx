@@ -2,27 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
-  Descriptions,
-  Dropdown,
   Drawer,
   Empty,
   Input,
-  List,
-  Popover,
   Select,
-  Space,
   Spin,
-  Tag,
-  Typography,
   message,
 } from "antd";
-import {
-  CommentOutlined,
-  HeartFilled,
-  HeartOutlined,
-  ReloadOutlined,
-} from "@ant-design/icons";
-import dayjs from "dayjs";
+import { ReloadOutlined } from "@ant-design/icons";
 import { pageApi } from "@/apis/publicfile";
 import {
   fetchLikedCountApi,
@@ -43,108 +30,27 @@ import type { CommentResponse } from "@/types/comment/query";
 import type { UserInfoResponse } from "@/types/user/query";
 import { unwrapList } from "@/utils/idtree";
 import { downloadApi } from "@/apis/file";
-import { SpaceBackground } from "./SpaceBackground";
-import { useAppSelector } from "@/store";
+import { SpaceBackground } from "../SpaceBackground";
 import { useFilePreview } from "@/hooks/useFilePreview";
+import {
+  normalizePost,
+  buildCommentTree,
+  normalizeCommentId,
+  type PublicPost,
+  type SortValue,
+} from "./utils/postUtils";
+import { ID_PATTERNS, PAGINATION } from "@/constants";
+import { PostCard } from "./components/PostCard";
+import { CommentList } from "./components/CommentList";
 
 const DEFAULT_PAGE_QUERY: PublicFilePageQuery = {
   pageIndex: 1,
-  pageSize: 20,
+  pageSize: PAGINATION.DEFAULT_PAGE_SIZE,
   sortedBy: "createdAt",
   ascSort: false,
 };
 
-const POST_ID_REGEX = /^PUB\d{17,19}$/;
-const COMMENT_ID_REGEX = /^CMT\d{17,19}$/;
-const USER_ID_REGEX = /^USR\d{17,19}$/;
-
-type SortValue = "latest" | "oldest" | "hot";
-
-type PublicPost = Omit<PublicFileResponse, "postId"> & { postId?: string };
-
-interface CommentNode extends CommentResponse {
-  children: CommentNode[];
-}
-
-const normalizePost = (raw: PublicFileResponse): PublicPost | null => {
-  const source = raw as PublicFileResponse & {
-    id?: string;
-    _id?: string;
-  };
-  const rawPostId = (source.postId ?? source.id ?? source._id ?? "").trim();
-  const originalFileId = (source.originalFileId ?? "").trim();
-  const title = (source.title ?? "").trim();
-
-  if (!originalFileId || !title) return null;
-  const postId = POST_ID_REGEX.test(rawPostId) ? rawPostId : undefined;
-
-  return {
-    ...source,
-    postId,
-    originalFileId,
-    title,
-    publisher: (source.publisher ?? "").trim(),
-    description: source.description ?? "",
-    likeCount: Number(source.likeCount ?? 0),
-    commentCount: Number(source.commentCount ?? 0),
-  };
-};
-
-const normalizeCommentId = (comment: CommentResponse): string | null => {
-  const id = (comment.commentId ?? "").trim();
-  if (!COMMENT_ID_REGEX.test(id)) return null;
-  return id;
-};
-
-const buildCommentTree = (comments: CommentResponse[]): CommentNode[] => {
-  const nodeMap = new Map<string, CommentNode>();
-  const roots: CommentNode[] = [];
-
-  comments.forEach((comment) => {
-    const id = normalizeCommentId(comment);
-    const node: CommentNode = {
-      ...comment,
-      commentId: id ?? undefined,
-      parentId: (comment.parentId ?? "").trim() || null,
-      children: [],
-    };
-
-    if (id) {
-      nodeMap.set(id, node);
-    } else {
-      roots.push(node);
-    }
-  });
-
-  nodeMap.forEach((node, id) => {
-    const parentId = (node.parentId ?? "").trim();
-    if (!parentId) {
-      roots.push(node);
-      return;
-    }
-
-    const parent = nodeMap.get(parentId);
-    if (!parent || parentId === id) {
-      roots.push(node);
-      return;
-    }
-
-    parent.children.push(node);
-  });
-
-  const sortByCreatedAt = (items: CommentNode[]) => {
-    items.sort(
-      (a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf(),
-    );
-    items.forEach((item) => sortByCreatedAt(item.children));
-  };
-  sortByCreatedAt(roots);
-
-  return roots;
-};
-
 export const PublicSpace = () => {
-  const themeMode = useAppSelector((state) => state.theme.mode);
   const { openPreview, previewModal } = useFilePreview();
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<PublicPost[]>([]);
@@ -158,9 +64,7 @@ export const PublicSpace = () => {
   const [replyInputMap, setReplyInputMap] = useState<Record<string, string>>({});
   const [comments, setComments] = useState<CommentResponse[]>([]);
   const [myUserInfo, setMyUserInfo] = useState<UserInfoResponse | null>(null);
-  const [publisherInfoMap, setPublisherInfoMap] = useState<
-    Record<string, UserInfoResponse>
-  >({});
+  const [publisherInfoMap, setPublisherInfoMap] = useState<Record<string, UserInfoResponse>>({});
 
   const commentTree = useMemo(() => buildCommentTree(comments), [comments]);
 
@@ -227,7 +131,7 @@ export const PublicSpace = () => {
       new Set(
         posts
           .map((post) => post.publisher)
-          .filter((userId) => USER_ID_REGEX.test(userId))
+          .filter((userId) => ID_PATTERNS.USER_ID.test(userId))
           .filter((userId) => !publisherInfoMap[userId]),
       ),
     );
@@ -273,10 +177,7 @@ export const PublicSpace = () => {
     });
   }, [posts]);
 
-  const updateSinglePost = (
-    postId: string,
-    updater: (post: PublicPost) => PublicPost,
-  ) => {
+  const updateSinglePost = (postId: string, updater: (post: PublicPost) => PublicPost) => {
     setPosts((prev) =>
       prev.map((post) => (post.postId === postId ? updater(post) : post)),
     );
@@ -296,31 +197,6 @@ export const PublicSpace = () => {
       return `用户${publisher.slice(-4)}`;
     }
     return publisher;
-  };
-
-  const renderPublisherTag = (publisher: string) => {
-    const info = publisherInfoMap[publisher];
-    const displayName = getPublisherDisplayName(publisher);
-
-    return (
-      <Popover
-        title={displayName}
-        trigger="hover"
-        content={
-          info ? (
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="用户名">{info.username}</Descriptions.Item>
-              <Descriptions.Item label="邮箱">{info.email || "-"}</Descriptions.Item>
-              <Descriptions.Item label="手机号">{info.mobile || "-"}</Descriptions.Item>
-            </Descriptions>
-          ) : (
-            <span className="text-sm">用户信息加载中</span>
-          )
-        }
-      >
-        <Tag color="processing">{displayName}</Tag>
-      </Popover>
-    );
   };
 
   const refreshLikeCount = async (postId: string) => {
@@ -404,7 +280,7 @@ export const PublicSpace = () => {
       const likedIds = (resp.statuses ?? [])
         .filter((item) => item.liked)
         .map((item) => item.postId)
-        .filter((postId) => POST_ID_REGEX.test(postId));
+        .filter((postId) => ID_PATTERNS.POST_ID.test(postId));
       setLikedPostIds(new Set(likedIds));
     } catch {
       setLikedPostIds(new Set());
@@ -501,7 +377,7 @@ export const PublicSpace = () => {
   };
 
   const onDeleteComment = async (postId: string, commentId?: string) => {
-    if (!commentId || !COMMENT_ID_REGEX.test(commentId)) {
+    if (!commentId || !ID_PATTERNS.COMMENT_ID.test(commentId)) {
       message.warning("当前评论ID无效，无法删除");
       return;
     }
@@ -512,84 +388,6 @@ export const PublicSpace = () => {
       ...post,
       commentCount: allComments.length,
     }));
-  };
-
-  const renderCommentNode = (postId: string, node: CommentNode, level = 0) => {
-    const id = normalizeCommentId(node);
-
-    return (
-      <div
-        key={id ?? `${node.username}-${node.createdAt}-${level}`}
-        className={`rounded-2xl border p-3 ${
-          themeMode === "dark"
-            ? "border-white/10 bg-slate-900/55"
-            : "border-white/55 bg-white/65"
-        } ${
-          level > 0 ? "ml-6 mt-3" : "mt-3"
-        }`}
-      >
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <Space size={8}>
-            <Tag color="blue">{node.username}</Tag>
-            <Typography.Text type="secondary">
-              {dayjs(node.createdAt).format("YYYY-MM-DD HH:mm")}
-            </Typography.Text>
-          </Space>
-          <Space size={4}>
-            {id && (
-              <Button
-                size="small"
-                type="link"
-                onClick={() =>
-                  setReplyInputMap((prev) => ({
-                    ...prev,
-                    [id]: prev[id] ?? "",
-                  }))
-                }
-              >
-                回复
-              </Button>
-            )}
-            <Button
-              size="small"
-              type="link"
-              danger
-              onClick={() => void onDeleteComment(postId, id ?? undefined)}
-            >
-              删除
-            </Button>
-          </Space>
-        </div>
-
-        <Typography.Paragraph className="mb-0 whitespace-pre-wrap">
-          {node.content}
-        </Typography.Paragraph>
-
-        {id !== null && Object.prototype.hasOwnProperty.call(replyInputMap, id) && (
-          <div className="mt-3">
-            <Input.TextArea
-              rows={2}
-              value={replyInputMap[id] ?? ""}
-              onChange={(event) =>
-                setReplyInputMap((prev) => ({ ...prev, [id]: event.target.value }))
-              }
-              placeholder="输入回复内容"
-            />
-            <div className="mt-2 flex justify-end">
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => void onCreateComment(postId, id)}
-              >
-                发送回复
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {node.children.map((child) => renderCommentNode(postId, child, level + 1))}
-      </div>
-    );
   };
 
   const downloadFile = async (fileId: string, filename: string) => {
@@ -623,7 +421,7 @@ export const PublicSpace = () => {
           <div className="flex flex-col gap-3 md:flex-row">
             <Input.Search
               allowClear
-              placeholder="搜索文件ID、发布者或标题"
+              placeholder="搜索文件标题"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onSearch={() => void loadPosts()}
@@ -653,65 +451,19 @@ export const PublicSpace = () => {
           <div className="grid gap-4 md:grid-cols-2">
             {posts.map((post, index) => {
               const liked = post.postId ? likedPostIds.has(post.postId) : false;
-              const cardKey =
-                post.postId ?? `${post.originalFileId}-${post.createdAt}-${index}`;
-              const fileMenuItems = [
-                {
-                  key: "preview",
-                  label: "预览",
-                  onClick: () => openPreview(post.originalFileId, post.title),
-                },
-                {
-                  key: "download",
-                  label: "下载",
-                  onClick: () =>
-                    void downloadFile(post.originalFileId, post.title),
-                },
-              ];
+              const cardKey = post.postId ?? `${post.originalFileId}-${index}`;
               return (
-                <Dropdown
+                <PostCard
                   key={cardKey}
-                  trigger={["contextMenu"]}
-                  menu={{ items: fileMenuItems }}
-                >
-                  <Card className="rounded-3xl border border-white/60 bg-white/65 shadow-lg backdrop-blur">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <Typography.Title level={4} className="mb-0">
-                        {post.title}
-                      </Typography.Title>
-                      {renderPublisherTag(post.publisher)}
-                    </div>
-
-                    <Typography.Paragraph className="mpcs-text-muted min-h-[44px] whitespace-pre-wrap">
-                      {post.description || "暂无简介"}
-                    </Typography.Paragraph>
-
-                    <div className="mpcs-text-muted mb-3 text-xs">
-                      发布于 {dayjs(post.createdAt).format("YYYY-MM-DD HH:mm")}
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <Space>
-                        <Button
-                          icon={liked ? <HeartFilled /> : <HeartOutlined />}
-                          type={liked ? "primary" : "default"}
-                          onClick={() => void onToggleLike(post)}
-                        >
-                          点赞 {post.likeCount}
-                        </Button>
-                        <Button
-                          icon={<CommentOutlined />}
-                          onClick={() => void openComments(post)}
-                        >
-                          评论 {post.commentCount}
-                        </Button>
-                      </Space>
-                      <Typography.Text type="secondary">
-                        帖子ID: {post.postId ?? "未返回"}
-                      </Typography.Text>
-                    </div>
-                  </Card>
-                </Dropdown>
+                  post={post}
+                  liked={liked}
+                  publisherInfoMap={publisherInfoMap}
+                  getDisplayName={getPublisherDisplayName}
+                  onLike={() => void onToggleLike(post)}
+                  onComment={() => void openComments(post)}
+                  onPreview={() => openPreview(post.originalFileId, post.title)}
+                  onDownload={() => void downloadFile(post.originalFileId, post.title)}
+                />
               );
             })}
           </div>
@@ -753,15 +505,15 @@ export const PublicSpace = () => {
 
             <Spin spinning={commentLoading}>
               {commentTree.length ? (
-                <List
-                  dataSource={commentTree}
-                  renderItem={(item) => (
-                    <List.Item className="block border-none px-0 py-0">
-                      {activePost.postId
-                        ? renderCommentNode(activePost.postId, item)
-                        : null}
-                    </List.Item>
-                  )}
+                <CommentList
+                  postId={activePost.postId ?? ""}
+                  comments={commentTree}
+                  replyInputMap={replyInputMap}
+                  onReplyInputChange={(id, value) =>
+                    setReplyInputMap((prev) => ({ ...prev, [id]: value }))
+                  }
+                  onReply={onCreateComment}
+                  onDelete={onDeleteComment}
                 />
               ) : (
                 <Empty description="还没有评论，来抢沙发吧" />

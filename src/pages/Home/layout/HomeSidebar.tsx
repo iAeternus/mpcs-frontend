@@ -27,8 +27,8 @@ export const HomeSidebar: FC<Props> = ({ active, onChange }) => {
 
   return (
     <Sider
-      width={220}
-      className="rounded-2xl overflow-hidden p-3 bg-white/45 dark:bg-white/5 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+      width={72}
+      className="rounded-2xl overflow-hidden p-2 bg-white/30 dark:bg-white/5 backdrop-blur-xl shadow-lg"
     >
       <Menu
         mode="inline"
@@ -37,9 +37,10 @@ export const HomeSidebar: FC<Props> = ({ active, onChange }) => {
         className="mpcs-menu bg-transparent border-none"
         items={menuItems.map((item) => ({
           key: item.key,
-          icon: item.icon,
-          label: item.label,
+          icon: <div className="text-lg">{item.icon}</div>,
+          label: <div className="text-xs mt-1">{item.label}</div>,
         }))}
+        inlineCollapsed
       />
     </Sider>
   );

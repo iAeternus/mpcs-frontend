@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Input, Modal, TreeSelect, message, theme } from "antd";
 import type { MenuProps, TreeSelectProps } from "antd";
 import type { IdNode } from "@/types/common/idtree";
@@ -17,35 +17,29 @@ import {
   moveFileApi,
   renameFileApi,
 } from "@/apis/file";
-import {
-  completeUploadApi,
-  initUploadApi,
-  uploadChunkApi,
-  uploadFileApi,
-} from "@/apis/upload";
 import { useFilePreview } from "@/hooks/useFilePreview";
 import { buildTreeData, formatFileSize, ROOT_OPTION } from "./utils";
 import { HierarchyDetailPane } from "./HierarchyDetailPane";
 import { HierarchyTreePane } from "./HierarchyTreePane";
+import { useUploadHandler } from "./components/useUploadHandler";
 import { useUploadProgress } from "./UploadProgressModal";
-import SparkMD5 from "spark-md5";
 
 interface FolderHierarchyProps {
   customId: string;
 }
 
-const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024;
-const CHUNK_SIZE = 50 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = 10;
-const HASH_CHUNK_SIZE = 10 * 1024 * 1024;
-
+/**
+ * 文件夹层级管理组件
+ * 提供文件夹树形浏览、文件上传下载、文件夹和文件的增删改查功能
+ */
 export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   customId,
 }) => {
   const { openPreview, previewModal } = useFilePreview();
   const { loading, idTree, folderMap, folderNameMap, nodeMap, reload } =
     useFolderHierarchy(customId);
-  const { state, startUpload, setStep, setHashProgress, setUploadProgress, setTotalChunks, incrementUploadedChunks, closeUpload, UploadProgressComponent } = useUploadProgress();
+  const { uploadFile } = useUploadHandler(reload);
+  const { state, closeUpload, UploadProgressComponent } = useUploadProgress();
 
   const { token } = theme.useToken();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -131,6 +125,10 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     return ids;
   };
 
+  /**
+   * 打开输入名称的模态框
+   * @param config - 模态框配置
+   */
   const openNameModal = ({
     title,
     placeholder,
@@ -167,169 +165,6 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         await onConfirm(name);
       },
     });
-  };
-
-  const uploadFile = (folder: HierarchyFolder) => {
-    const calculateFileHash = async (
-      file: File,
-    ): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const spark = new SparkMD5.ArrayBuffer();
-        let offset = 0;
-        const totalChunks = Math.ceil(file.size / HASH_CHUNK_SIZE);
-        let processedChunks = 0;
-        const reader = new FileReader();
-        const loadNext = () => {
-          const slice = file.slice(offset, offset + HASH_CHUNK_SIZE);
-          reader.readAsArrayBuffer(slice);
-        };
-        reader.onload = (e) => {
-          spark.append(e.target?.result as ArrayBuffer);
-          offset += HASH_CHUNK_SIZE;
-          processedChunks++;
-          setHashProgress(Math.round((processedChunks / totalChunks) * 100));
-          if (offset < file.size) {
-            loadNext();
-          } else {
-            resolve(spark.end());
-          }
-        };
-        reader.onerror = () => reject(reader.error);
-        loadNext();
-      });
-    };
-
-    const uploadChunkWithRetry = async (
-      uploadId: string,
-      chunkIndex: number,
-      chunk: Blob,
-      retries = 3,
-    ): Promise<void> => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          await uploadChunkApi(uploadId, chunkIndex, chunk);
-          return;
-        } catch (err) {
-          if (i === retries - 1) throw err;
-          await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
-        }
-      }
-    };
-
-    const uploadLargeFileByChunks = async (parentId: string, file: File) => {
-      const totalSize = file.size;
-      const chunkSize = CHUNK_SIZE;
-      const totalChunks = Math.ceil(totalSize / chunkSize);
-
-      startUpload(file.name, file.size, totalChunks);
-      setTotalChunks(totalChunks);
-
-      try {
-        const fileHash = await calculateFileHash(file);
-
-        setStep("initializing");
-        const initResp = await initUploadApi({
-          parentId,
-          fileName: file.name,
-          fileHash,
-          totalSize,
-          chunkSize,
-          totalChunks,
-        });
-
-        if (initResp.uploaded) {
-          setStep("completed");
-          closeUpload();
-          await reload();
-          return;
-        }
-
-        const uploadId = initResp.uploadId;
-        if (!uploadId) {
-          throw new Error("init upload missing uploadId");
-        }
-
-        const uploadedSet = new Set(initResp.uploadedChunks ?? []);
-        const pendingChunks: number[] = [];
-        for (let i = 0; i < totalChunks; i++) {
-          if (!uploadedSet.has(i)) pendingChunks.push(i);
-        }
-
-        if (pendingChunks.length === 0) {
-          setStep("merging");
-          await completeUploadApi({
-            uploadId,
-            parentId,
-            fileHash,
-            totalSize,
-          });
-          setStep("completed");
-          closeUpload();
-          await reload();
-          return;
-        }
-
-        setStep("uploading");
-        const uploadChunk = async (chunkIndex: number): Promise<void> => {
-          const start = chunkIndex * chunkSize;
-          const end = Math.min(start + chunkSize, totalSize);
-          const chunk = file.slice(start, end);
-          await uploadChunkWithRetry(uploadId, chunkIndex, chunk);
-          incrementUploadedChunks(1);
-        };
-
-        let completedChunks = uploadedSet.size;
-        for (let i = 0; i < pendingChunks.length; i += UPLOAD_CONCURRENCY) {
-          const batch = pendingChunks.slice(i, i + UPLOAD_CONCURRENCY);
-          await Promise.all(batch.map((idx) => uploadChunk(idx)));
-          completedChunks += batch.length;
-          setUploadProgress(Math.round((completedChunks / totalChunks) * 100), completedChunks);
-        }
-
-        setStep("merging");
-        await completeUploadApi({
-          uploadId,
-          parentId,
-          fileHash,
-          totalSize,
-        });
-
-        setStep("completed");
-        closeUpload();
-        await reload();
-      } catch (err) {
-        setStep("error");
-        throw err;
-      }
-    };
-
-    const uploadByFileSize = async (parentId: string, file: File) => {
-      if (file.size >= LARGE_FILE_THRESHOLD) {
-        await uploadLargeFileByChunks(parentId, file);
-        return;
-      }
-
-      await uploadFileApi(parentId, file);
-    };
-
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = false;
-
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-
-      try {
-        await uploadByFileSize(folder.id, file);
-        message.success("上传成功");
-        await reload();
-      } catch {
-        message.error("上传失败");
-      }
-    };
-
-    input.click();
   };
 
   const previewFileInBrowser = async (file: HierarchyFile) => {

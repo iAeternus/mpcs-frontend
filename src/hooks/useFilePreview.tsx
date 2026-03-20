@@ -15,11 +15,26 @@ const INITIAL_STATE: PreviewState = {
   title: "",
 };
 
+/**
+ * 文件预览 Hook
+ * 提供模态框内嵌预览和全屏预览两种模式
+ * @returns 文件预览相关状态和方法
+ * @example
+ * ```tsx
+ * const { openPreview, previewModal } = useFilePreview();
+ * // 在组件中使用 previewModal
+ * // 调用 openPreview(fileId, title) 打开预览
+ * ```
+ */
 export const useFilePreview = () => {
   const [state, setState] = useState<PreviewState>(INITIAL_STATE);
-  // 需要主动控制 iframe，防止切换预览方式时媒体残留播放
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
+  /**
+   * 打开文件预览模态框
+   * @param fileId - 文件ID
+   * @param title - 预览窗口标题（可选）
+   */
   const openPreview = (fileId: string, title?: string) => {
     setState({
       open: true,
@@ -28,26 +43,30 @@ export const useFilePreview = () => {
     });
   };
 
+  /**
+   * 关闭预览模态框
+   * 关闭前会先停止 iframe 的媒体播放，防止音频/视频继续在后台播放
+   */
   const closePreview = () => {
-    // 关闭前先断流，避免弹窗关闭后音视频继续播放
     if (iframeRef.current) {
       iframeRef.current.src = "about:blank";
     }
     setState(INITIAL_STATE);
   };
 
+  /**
+   * 打开全屏预览
+   * 在新窗口中打开预览，解决模态框预览时媒体播放的限制
+   */
   const openFullscreenPreview = () => {
     if (!state.fileId) return;
     const previewUrl = previewApi(state.fileId);
-    // 全屏前先停止嵌入预览，避免嵌入页与全屏页混音
     if (iframeRef.current) {
       iframeRef.current.src = "about:blank";
     }
-    // 先同步关闭弹窗，避免用户看到新页已开但旧弹窗还在
     flushSync(() => {
       closePreview();
     });
-    // 延后一拍再打开新窗口，降低状态更新与跳转的时序冲突
     setTimeout(() => {
       const openedWindow = window.open(
         previewUrl,

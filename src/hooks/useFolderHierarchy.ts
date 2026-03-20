@@ -8,6 +8,11 @@ import type { IdNode } from "@/types/common/idtree";
 import { fetchFolderHierarchyApi } from "@/apis/folder";
 import { normalizeIdNodes, unwrapList, buildNodeMap } from "@/utils/idtree";
 
+/**
+ * 规范化文件列表数据
+ * @param rawFiles - 原始文件数据
+ * @returns 规范化的文件列表
+ */
 function normalizeFiles(rawFiles: unknown): HierarchyFile[] {
   const files = unwrapList<HierarchyFile>(rawFiles);
   return files.filter(
@@ -20,6 +25,11 @@ function normalizeFiles(rawFiles: unknown): HierarchyFile[] {
   );
 }
 
+/**
+ * 规范化文件夹列表数据
+ * @param rawFolders - 原始文件夹数据
+ * @returns 规范化的文件夹列表
+ */
 function normalizeFolders(rawFolders: unknown): HierarchyFolder[] {
   const folders = unwrapList<HierarchyFolder>(rawFolders);
   return folders
@@ -35,6 +45,15 @@ function normalizeFolders(rawFolders: unknown): HierarchyFolder[] {
     }));
 }
 
+/**
+ * 文件夹层级数据管理 Hook
+ * @param customId - 用户自定义ID，用于获取特定用户的文件夹层级结构
+ * @returns 文件夹层级相关状态和方法
+ * @example
+ * ```tsx
+ * const { loading, idTree, folderMap, reload } = useFolderHierarchy(userId);
+ * ```
+ */
 export function useFolderHierarchy(customId?: string | null) {
   const [loading, setLoading] = useState(false);
   const [idTree, setIdTree] = useState<IdNode[]>([]);

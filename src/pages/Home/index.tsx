@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Layout } from "antd";
 import { PersonalSpace } from "./features/content/PersonalSpace";
-import { TeamSpace } from "./features/content/TeamSpace";
-import { PublicSpace } from "./features/content/PublicSpace";
+import { TeamSpace } from "./features/content/TeamSpace/index";
+import { PublicSpace } from "./features/content/PublicSpace/index";
 import { PostManage } from "./features/content/PostManage";
 import { UsagePage } from "./features/content/UsagePage";
 import { HomeHeader } from "./layout/HomeHeader";
@@ -44,15 +44,15 @@ export const Home = () => {
       <Layout className="relative min-h-screen bg-transparent">
         <HomeHeader onGoUsage={() => setActive("usage")} />
 
-        <Layout className="gap-6 px-6 py-6">
+        <Layout className="gap-4 px-4 py-4">
           <HomeSidebar active={active} onChange={setActive} />
 
-          <Content className="flex justify-center">
+          <Content className="flex justify-center min-w-0">
             <div
               className="
                 mpcs-home-content-card
-                w-full max-w-7xl min-h-[75vh]
-                rounded-3xl
+                w-full min-h-[75vh]
+                rounded-2xl
                 bg-white/80 dark:bg-white/5
                 backdrop-blur-xl
                 shadow-[0_20px_60px_rgba(0,0,0,0.25)]
