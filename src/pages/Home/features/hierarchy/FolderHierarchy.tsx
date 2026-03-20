@@ -4,9 +4,7 @@ import type { MenuProps, TreeSelectProps } from "antd";
 import type { IdNode } from "@/types/common/idtree";
 import type { HierarchyFile, HierarchyFolder } from "@/types/folder/query";
 import { useFolderHierarchy } from "@/hooks/useFolderHierarchy";
-import {
-  postApi,
-} from "@/apis/publicfile";
+import { postApi } from "@/apis/publicfile";
 import {
   createFolderApi,
   deleteFolderForceApi,
@@ -27,17 +25,18 @@ import {
 } from "@/apis/upload";
 import { useFilePreview } from "@/hooks/useFilePreview";
 import { buildTreeData, formatFileSize, ROOT_OPTION } from "./utils";
-import { HierarchyTreePane } from "./HierarchyTreePane";
 import { HierarchyDetailPane } from "./HierarchyDetailPane";
+import { HierarchyTreePane } from "./HierarchyTreePane";
+import { useUploadProgress } from "./UploadProgressModal";
 import SparkMD5 from "spark-md5";
 
 interface FolderHierarchyProps {
   customId: string;
 }
 
-const LARGE_FILE_THRESHOLD = 20 * 1024 * 1024;
+const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024;
 const CHUNK_SIZE = 50 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = 3;
+const UPLOAD_CONCURRENCY = 10;
 const HASH_CHUNK_SIZE = 10 * 1024 * 1024;
 
 export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
@@ -46,6 +45,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   const { openPreview, previewModal } = useFilePreview();
   const { loading, idTree, folderMap, folderNameMap, nodeMap, reload } =
     useFolderHierarchy(customId);
+  const { startUpload, setStep, setProgress, closeUpload, UploadProgressModal } = useUploadProgress();
 
   const { token } = theme.useToken();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -172,7 +172,6 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   const uploadFile = (folder: HierarchyFolder) => {
     const calculateFileHash = async (
       file: File,
-      onProgress: (percent: number) => void,
     ): Promise<string> => {
       return new Promise((resolve, reject) => {
         const spark = new SparkMD5.ArrayBuffer();
@@ -185,8 +184,6 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         reader.onload = (e) => {
           spark.append(e.target?.result as ArrayBuffer);
           offset += HASH_CHUNK_SIZE;
-          const percent = Math.min(Math.round((offset / file.size) * 100), 100);
-          onProgress(percent);
           if (offset < file.size) {
             loadNext();
           } else {
@@ -215,112 +212,88 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
       }
     };
 
-    const uploadLargeFileByChunks = async (
-      parentId: string,
-      file: File,
-    ) => {
+    const uploadLargeFileByChunks = async (parentId: string, file: File) => {
+      startUpload(file.name, file.size);
       const totalSize = file.size;
       const chunkSize = CHUNK_SIZE;
       const totalChunks = Math.ceil(totalSize / chunkSize);
 
-      message.loading({
-        content: "正在计算文件指纹...",
-        key: "upload-progress",
-        duration: 0,
-      });
+      try {
+        const fileHash = await calculateFileHash(file);
 
-      const fileHash = await calculateFileHash(file, (percent) => {
-        message.loading({
-          content: `正在计算文件指纹... ${percent}%`,
-          key: "upload-progress",
-          duration: 0,
+        setStep("initializing");
+        const initResp = await initUploadApi({
+          parentId,
+          fileName: file.name,
+          fileHash,
+          totalSize,
+          chunkSize,
+          totalChunks,
         });
-      });
 
-      const initResp = await initUploadApi({
-        parentId,
-        fileName: file.name,
-        fileHash,
-        totalSize,
-        chunkSize,
-        totalChunks,
-      });
+        if (initResp.uploaded) {
+          setStep("completed");
+          closeUpload();
+          await reload();
+          return;
+        }
 
-      if (initResp.uploaded) {
-        message.success({ content: "文件已上传", key: "upload-progress" });
-        return;
-      }
+        const uploadId = initResp.uploadId;
+        if (!uploadId) {
+          throw new Error("init upload missing uploadId");
+        }
 
-      const uploadId = initResp.uploadId;
-      if (!uploadId) {
-        throw new Error("init upload missing uploadId");
-      }
+        const uploadedSet = new Set(initResp.uploadedChunks ?? []);
+        const pendingChunks: number[] = [];
+        for (let i = 0; i < totalChunks; i++) {
+          if (!uploadedSet.has(i)) pendingChunks.push(i);
+        }
 
-      const uploadedSet = new Set(initResp.uploadedChunks ?? []);
-      const pendingChunks: number[] = [];
-      for (let i = 0; i < totalChunks; i++) {
-        if (!uploadedSet.has(i)) pendingChunks.push(i);
-      }
+        if (pendingChunks.length === 0) {
+          setStep("merging");
+          await completeUploadApi({
+            uploadId,
+            parentId,
+            fileHash,
+            totalSize,
+          });
+          setStep("completed");
+          closeUpload();
+          await reload();
+          return;
+        }
 
-      if (pendingChunks.length === 0) {
-        message.loading({
-          content: "合并文件中...",
-          key: "upload-progress",
-          duration: 0,
-        });
+        setStep("uploading");
+        const uploadChunk = async (chunkIndex: number): Promise<void> => {
+          const start = chunkIndex * chunkSize;
+          const end = Math.min(start + chunkSize, totalSize);
+          const chunk = file.slice(start, end);
+          await uploadChunkWithRetry(uploadId, chunkIndex, chunk);
+        };
+
+        let completedChunks = uploadedSet.size;
+        for (let i = 0; i < pendingChunks.length; i += UPLOAD_CONCURRENCY) {
+          const batch = pendingChunks.slice(i, i + UPLOAD_CONCURRENCY);
+          await Promise.all(batch.map((idx) => uploadChunk(idx)));
+          completedChunks += batch.length;
+          setProgress(Math.round((completedChunks / totalChunks) * 100));
+        }
+
+        setStep("merging");
         await completeUploadApi({
           uploadId,
           parentId,
           fileHash,
           totalSize,
         });
-        message.success({ content: "上传完成", key: "upload-progress" });
-        return;
+
+        setStep("completed");
+        closeUpload();
+        await reload();
+      } catch (err) {
+        setStep("error");
+        throw err;
       }
-
-      let ws: WebSocket | null = null;
-      const wsUrl = `ws://localhost:8082/ws/upload/${uploadId}`;
-
-      try {
-        ws = new WebSocket(wsUrl);
-      } catch {
-        console.warn("WebSocket connection failed, progress will be updated locally");
-      }
-
-      const uploadChunk = async (
-        chunkIndex: number,
-      ): Promise<void> => {
-        const start = chunkIndex * chunkSize;
-        const end = Math.min(start + chunkSize, totalSize);
-        const chunk = file.slice(start, end);
-        await uploadChunkWithRetry(uploadId, chunkIndex, chunk);
-      };
-
-      let completedChunks = uploadedSet.size;
-      for (let i = 0; i < pendingChunks.length; i += UPLOAD_CONCURRENCY) {
-        const batch = pendingChunks.slice(i, i + UPLOAD_CONCURRENCY);
-        await Promise.all(batch.map((idx) => uploadChunk(idx)));
-        completedChunks += batch.length;
-        message.loading({
-          content: `上传中: ${completedChunks}/${totalChunks}`,
-          key: "upload-progress",
-          duration: 0,
-        });
-      }
-
-      message.loading({ content: "合并文件中...", key: "upload-progress", duration: 0 });
-
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-
-      await completeUploadApi({
-        uploadId,
-        parentId,
-        fileHash,
-        totalSize,
-      });
-      message.success({ content: "上传完成", key: "upload-progress" });
     };
 
     const uploadByFileSize = async (parentId: string, file: File) => {
@@ -602,6 +575,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         </div>
       </Card>
       {previewModal}
+      <UploadProgressModal />
     </>
   );
 };

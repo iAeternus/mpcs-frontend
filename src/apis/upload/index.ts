@@ -68,5 +68,21 @@ export const completeUploadApi = async (
     data: cmd,
     timeout: LARGE_FILE_TIMEOUT,
   });
+
+  return res.data;
+};
+
+/** 计算文件hash */
+export const computeFileHashApi = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await http.request<string>({
+    url: "/files/upload/compute-hash",
+    method: "POST",
+    data: formData,
+    timeout: LARGE_FILE_TIMEOUT,
+  });
+
   return res.data;
 };
