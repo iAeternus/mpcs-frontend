@@ -38,8 +38,16 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   const { openPreview, previewModal } = useFilePreview();
   const { loading, idTree, folderMap, folderNameMap, nodeMap, reload } =
     useFolderHierarchy(customId);
-  const { uploadFile } = useUploadHandler(reload);
-  const { state, closeUpload, UploadProgressComponent } = useUploadProgress();
+  const { state, closeUpload, startUpload, setStep, setHashProgress, setUploadProgress, setTotalChunks, incrementUploadedChunks, UploadProgressComponent } = useUploadProgress();
+  const { uploadFile } = useUploadHandler(reload, {
+    startUpload,
+    setStep,
+    setHashProgress,
+    setUploadProgress,
+    setTotalChunks,
+    incrementUploadedChunks,
+    closeUpload,
+  });
 
   const { token } = theme.useToken();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
