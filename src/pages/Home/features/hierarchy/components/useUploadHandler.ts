@@ -203,6 +203,7 @@ export const useUploadHandler = (
       }
 
       await uploadFileApi(parentId, file);
+      await onSuccess();
     };
 
     const input = document.createElement("input");
