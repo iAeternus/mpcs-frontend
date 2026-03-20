@@ -45,7 +45,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   const { openPreview, previewModal } = useFilePreview();
   const { loading, idTree, folderMap, folderNameMap, nodeMap, reload } =
     useFolderHierarchy(customId);
-  const { startUpload, setStep, setProgress, closeUpload, UploadProgressModal } = useUploadProgress();
+  const { state, startUpload, setStep, setHashProgress, setUploadProgress, setTotalChunks, incrementUploadedChunks, closeUpload, UploadProgressComponent } = useUploadProgress();
 
   const { token } = theme.useToken();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -176,6 +176,8 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
       return new Promise((resolve, reject) => {
         const spark = new SparkMD5.ArrayBuffer();
         let offset = 0;
+        const totalChunks = Math.ceil(file.size / HASH_CHUNK_SIZE);
+        let processedChunks = 0;
         const reader = new FileReader();
         const loadNext = () => {
           const slice = file.slice(offset, offset + HASH_CHUNK_SIZE);
@@ -184,6 +186,8 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         reader.onload = (e) => {
           spark.append(e.target?.result as ArrayBuffer);
           offset += HASH_CHUNK_SIZE;
+          processedChunks++;
+          setHashProgress(Math.round((processedChunks / totalChunks) * 100));
           if (offset < file.size) {
             loadNext();
           } else {
@@ -213,10 +217,12 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     };
 
     const uploadLargeFileByChunks = async (parentId: string, file: File) => {
-      startUpload(file.name, file.size);
       const totalSize = file.size;
       const chunkSize = CHUNK_SIZE;
       const totalChunks = Math.ceil(totalSize / chunkSize);
+
+      startUpload(file.name, file.size, totalChunks);
+      setTotalChunks(totalChunks);
 
       try {
         const fileHash = await calculateFileHash(file);
@@ -269,6 +275,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
           const end = Math.min(start + chunkSize, totalSize);
           const chunk = file.slice(start, end);
           await uploadChunkWithRetry(uploadId, chunkIndex, chunk);
+          incrementUploadedChunks(1);
         };
 
         let completedChunks = uploadedSet.size;
@@ -276,7 +283,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
           const batch = pendingChunks.slice(i, i + UPLOAD_CONCURRENCY);
           await Promise.all(batch.map((idx) => uploadChunk(idx)));
           completedChunks += batch.length;
-          setProgress(Math.round((completedChunks / totalChunks) * 100));
+          setUploadProgress(Math.round((completedChunks / totalChunks) * 100), completedChunks);
         }
 
         setStep("merging");
@@ -575,7 +582,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         </div>
       </Card>
       {previewModal}
-      <UploadProgressModal />
+      <UploadProgressComponent state={state} onClose={closeUpload} />
     </>
   );
 };
