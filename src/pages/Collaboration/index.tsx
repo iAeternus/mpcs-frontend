@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Card, Tag, Tooltip, Spin, message, Space, Modal } from "antd";
 import TextArea from "antd/es/input/TextArea";
-import Markdown from "@uiw/react-md-editor";
+import Markdown from "react-markdown";
 import {
   ArrowLeftOutlined,
   SaveOutlined,
@@ -186,7 +186,7 @@ const CollaborationPage = () => {
         <Card className="mpcs-collab-editor-card">
           {markdownMode === "preview" ? (
             <div className="mpcs-collab-preview markdown-body" style={{ minHeight: editorHeight }}>
-              <Markdown value={content || "*开始编辑你的文档...*"} />
+              <Markdown>{content || "*开始编辑你的文档...*"}</Markdown>
             </div>
           ) : (
             <div className="mpcs-collab-editor-wrapper">
@@ -214,7 +214,7 @@ const CollaborationPage = () => {
                   </div>
                   <div className="mpcs-collab-preview-pane">
                     <div className="mpcs-collab-preview markdown-body">
-                      <Markdown value={content || "*预览区域*"} />
+                      <Markdown>{content || "*预览区域*"}</Markdown>
                     </div>
                   </div>
                 </div>
