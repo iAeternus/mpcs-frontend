@@ -33,13 +33,9 @@ export const selectToken = (state: RootState) => state.auth.token;
 
 export const login = (cmd: MobileOrEmailLoginCommand) => {
   return async (dispatch: AppDispatch) => {
-    try {
-      const resp = await loginWithMobileOrEmailApi(cmd);
-      dispatch(setToken(resp.token));
-      return resp;
-    } catch (error) {
-      throw error;
-    }
+    const resp = await loginWithMobileOrEmailApi(cmd);
+    dispatch(setToken(resp.token));
+    return resp;
   };
 };
 

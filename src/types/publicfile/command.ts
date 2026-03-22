@@ -14,9 +14,7 @@ export interface EditDescriptionCommand {
   newDescription: string | null;
 }
 
-export interface PublicFilePageQuery extends SearchablePageQuery {
-  // Empty
-}
+export type PublicFilePageQuery = SearchablePageQuery;
 
 export interface PostResponse {
   postId: string;

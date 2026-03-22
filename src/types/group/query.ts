@@ -2,10 +2,10 @@ import type { SearchablePageQuery } from "../common/page";
 import type { InheritancePolicy } from "./enums/inheritancePolicy";
 
 // 分页查询我管理的组
-export interface MyGroupsAsForManagerPageQuery extends SearchablePageQuery {}
+export type MyGroupsAsForManagerPageQuery = SearchablePageQuery;
 
 // 分页查询我加入的组
-export interface MyGroupsAsForMemberPageQuery extends SearchablePageQuery {}
+export type MyGroupsAsForMemberPageQuery = SearchablePageQuery;
 
 export interface GroupFoldersResponse {
   groupFolders: GroupFolder[];

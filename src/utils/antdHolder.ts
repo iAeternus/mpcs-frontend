@@ -1,9 +1,12 @@
-let messageApi: any;
-let notificationApi: any;
+import type { MessageInstance } from "antd/es/message/interface";
+import type { NotificationInstance } from "antd/es/notification/interface";
+
+let messageApi: MessageInstance | null = null;
+let notificationApi: NotificationInstance | null = null;
 
 export const setAntdApis = (apis: {
-  messageApi: any;
-  notificationApi: any;
+  messageApi: MessageInstance;
+  notificationApi: NotificationInstance;
 }) => {
   messageApi = apis.messageApi;
   notificationApi = apis.notificationApi;

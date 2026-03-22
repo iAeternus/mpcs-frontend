@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Card, Tag, Tooltip, Spin, message, Space, Modal } from "antd";
 import TextArea from "antd/es/input/TextArea";
+import Markdown from "@uiw/react-md-editor";
 import {
   ArrowLeftOutlined,
   SaveOutlined,
@@ -134,7 +135,7 @@ const CollaborationPage = () => {
                     color={user.online ? "blue" : "default"}
                     icon={<UserOutlined />}
                   >
-                    {user.username.slice(0, 4)}
+                    {user.username}
                   </Tag>
                 </Tooltip>
               ))}
@@ -184,13 +185,9 @@ const CollaborationPage = () => {
       <div className="mpcs-collab-container">
         <Card className="mpcs-collab-editor-card">
           {markdownMode === "preview" ? (
-            <div
-              className="mpcs-collab-preview markdown-body"
-              style={{ minHeight: editorHeight }}
-              dangerouslySetInnerHTML={{
-                __html: content || "<p class='mpcs-collab-empty'>开始编辑你的文档...</p>",
-              }}
-            />
+            <div className="mpcs-collab-preview markdown-body" style={{ minHeight: editorHeight }}>
+              <Markdown value={content || "*开始编辑你的文档...*"} />
+            </div>
           ) : (
             <div className="mpcs-collab-editor-wrapper">
               {markdownMode === "edit" && (
@@ -216,13 +213,9 @@ const CollaborationPage = () => {
                     />
                   </div>
                   <div className="mpcs-collab-preview-pane">
-                    <div
-                      className="mpcs-collab-preview markdown-body"
-                      dangerouslySetInnerHTML={{
-                        __html:
-                          content || "<p class='mpcs-collab-empty'>预览区域</p>",
-                      }}
-                    />
+                    <div className="mpcs-collab-preview markdown-body">
+                      <Markdown value={content || "*预览区域*"} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -233,7 +226,7 @@ const CollaborationPage = () => {
 
       <div className="mpcs-collab-footer">
         <span className="mpcs-collab-footer-text">
-          协同编辑 · {session?.sessionId ? `会话: ${session.sessionId.slice(0, 8)}...` : "无会话"}
+          协同编辑
         </span>
       </div>
     </div>

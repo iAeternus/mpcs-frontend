@@ -273,7 +273,7 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
           </Tag>
           <Tag>{group.inheritancePolicy}</Tag>
           <span className="mpcs-text-muted text-sm">
-            {getPolicyHint(group.inheritancePolicy as any)}
+            {getPolicyHint(group.inheritancePolicy)}
           </span>
         </div>
         {(!group.active || !isManager) && (

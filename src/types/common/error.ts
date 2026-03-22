@@ -6,7 +6,7 @@ export interface MyError {
   path: string;
   timestamp: string;
   traceId: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
 export interface ErrorResponse {
