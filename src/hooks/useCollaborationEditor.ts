@@ -35,7 +35,8 @@ interface UseCollaborationEditorReturn {
   users: CollabUser[];
   currentVersion: number;
   connected: boolean;
-  save: () => Promise<void>;
+  saved: boolean;
+  markSaved: () => void;
   error: string | null;
 }
 
@@ -45,30 +46,42 @@ export const useCollaborationEditor = ({
   onContentChange,
 }: UseCollaborationEditorOptions): UseCollaborationEditorReturn => {
   const wsRef = useRef<WebSocket | null>(null);
+  const wsConnectedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<SessionInfoResponse | null>(null);
   const [content, setContentState] = useState("");
   const [users, setUsers] = useState<CollabUser[]>([]);
   const [currentVersion, setCurrentVersion] = useState(0);
   const [connected, setConnected] = useState(false);
+  const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const pendingOpsRef = useRef<TextOperation[]>([]);
   const sessionIdRef = useRef<string | null>(null);
   const userIdRef = useRef<string>("current-user");
   const usernameRef = useRef<string>("User");
+  const initialContentRef = useRef<string>("");
+  const savedContentRef = useRef<string>("");
+  const sessionRef = useRef<SessionInfoResponse | null>(null);
   const initializedRef = useRef(false);
+  const setUsersRef = useRef(setUsers);
+  const setCurrentVersionRef = useRef(setCurrentVersion);
 
-  const getWebSocketUrl = (sessionId: string) => {
+  sessionRef.current = session;
+  setUsersRef.current = setUsers;
+  setCurrentVersionRef.current = setCurrentVersion;
+
+  const getWebSocketUrl = useCallback((sessionId: string) => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
+    const wsHost = import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082`;
     const encodedUsername = encodeURIComponent(usernameRef.current);
-    return `${protocol}//${host}/ws/collaboration/${sessionId}?userId=${userIdRef.current}&username=${encodedUsername}`;
-  };
+    return `${protocol}//${wsHost}/ws/collaboration/${sessionId}?userId=${userIdRef.current}&username=${encodedUsername}`;
+  }, []);
 
   const computeOperations = (
     oldContent: string,
     newContent: string,
-    userId: string,
+    oderId: string,
     version: number,
   ): TextOperation[] => {
     const ops: TextOperation[] = [];
@@ -86,7 +99,7 @@ export const useCollaborationEditor = ({
           position: j,
           content: newContent[j],
           length: 1,
-          userId,
+          userId: oderId,
           clientVersion: version,
           timestamp: new Date().toISOString(),
         });
@@ -98,7 +111,7 @@ export const useCollaborationEditor = ({
           position: i,
           content: "",
           length: 1,
-          userId,
+          userId: oderId,
           clientVersion: version,
           timestamp: new Date().toISOString(),
         });
@@ -109,41 +122,39 @@ export const useCollaborationEditor = ({
     return ops;
   };
 
-  const handleWebSocketMessage = useCallback((data: OperationAckMessage | SessionInfoResponse) => {
-    if (data.type === "ack") {
-      const ack = data as OperationAckMessage;
+  const handleWebSocketMessage = useCallback((data: Record<string, unknown>) => {
+    const msgType = data.type as string;
+    
+    if (msgType === "operation_ack") {
+      const ack = data as unknown as OperationAckMessage;
       if (ack.success) {
-        setCurrentVersion(ack.version);
+        setCurrentVersionRef.current(ack.serverVersion);
         pendingOpsRef.current = [];
       }
-    } else if (data.type === "state" || "activeUsers" in data) {
-      const state = data as SessionInfoResponse;
-      if (state.activeUsers) {
-        setUsers(state.activeUsers);
+    } else if (msgType === "session_state") {
+      if (data.activeUsers) {
+        setUsersRef.current(data.activeUsers as CollabUser[]);
       }
-      if (state.version !== undefined) {
-        setCurrentVersion(state.version);
+      if (data.version !== undefined) {
+        setCurrentVersionRef.current(data.version as number);
       }
     }
   }, []);
 
   const connectWebSocket = useCallback(
-    async (sessionId: string) => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
+    (sessionId: string) => {
+      if (wsConnectedRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
         return;
       }
 
-      const ws = new WebSocket(getWebSocketUrl(sessionId));
+      const url = getWebSocketUrl(sessionId);
+
+      const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
+        wsConnectedRef.current = true;
         setConnected(true);
-        ws.send(
-          JSON.stringify({
-            type: "join",
-            sessionId,
-          }),
-        );
       };
 
       ws.onmessage = (event) => {
@@ -156,6 +167,7 @@ export const useCollaborationEditor = ({
       };
 
       ws.onclose = () => {
+        wsConnectedRef.current = false;
         setConnected(false);
       };
 
@@ -163,16 +175,16 @@ export const useCollaborationEditor = ({
         setError("WebSocket连接失败");
       };
     },
-    [handleWebSocketMessage],
+    [getWebSocketUrl, handleWebSocketMessage],
   );
 
   const sendOperation = useCallback(
-    (operation: TextOperation, sessionId?: string) => {
+    (operation: TextOperation, sid: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
           JSON.stringify({
             type: "operation",
-            sessionId,
+            sessionId: sid,
             operation,
           } as OperationMessage),
         );
@@ -188,17 +200,25 @@ export const useCollaborationEditor = ({
     (newContent: string) => {
       setContentState(newContent);
       onContentChange?.(newContent);
+      setSaved(newContent === savedContentRef.current);
 
-      if (session) {
+      const currentSession = sessionRef.current;
+      if (currentSession) {
         const oldContent = contentRef.current;
-        const ops = computeOperations(oldContent, newContent, "user", currentVersion);
+        const version = currentVersion;
+        const ops = computeOperations(oldContent, newContent, userIdRef.current, version);
         ops.forEach((op) => {
-          sendOperation(op, session.sessionId);
+          sendOperation(op, currentSession.sessionId);
         });
       }
     },
-    [session, onContentChange, sendOperation, currentVersion],
+    [onContentChange, sendOperation, currentVersion],
   );
+
+  const markSaved = useCallback(() => {
+    setSaved(true);
+    savedContentRef.current = contentRef.current;
+  }, []);
 
   useEffect(() => {
     if (initializedRef.current) {
@@ -208,6 +228,7 @@ export const useCollaborationEditor = ({
 
     const initSession = async () => {
       setLoading(true);
+      
       try {
         let userProfile;
         try {
@@ -273,9 +294,7 @@ export const useCollaborationEditor = ({
           await joinSessionApi(sess.sessionId);
         } catch (joinErr) {
           const joinError = joinErr as { response?: { status?: number } };
-          if (joinError.response?.status === 409) {
-            // User already in session, continue
-          } else {
+          if (joinError.response?.status !== 409) {
             throw joinErr;
           }
         }
@@ -301,13 +320,16 @@ export const useCollaborationEditor = ({
             initialContent = "";
           }
         }
-        setContentState(initialContent);
 
+        initialContentRef.current = initialContent;
+        savedContentRef.current = initialContent;
+        setContentState(initialContent);
+        
+        setLoading(false);
         connectWebSocket(sess.sessionId);
-      } catch {
+      } catch (err) {
         setError("初始化协同会话失败");
         message.error("初始化协同会话失败");
-      } finally {
         setLoading(false);
       }
     };
@@ -315,6 +337,7 @@ export const useCollaborationEditor = ({
     void initSession();
 
     return () => {
+      wsConnectedRef.current = false;
       if (wsRef.current) {
         wsRef.current.close();
       }
@@ -325,7 +348,7 @@ export const useCollaborationEditor = ({
   }, [fileId, documentTitle, connectWebSocket]);
 
   const save = useCallback(async () => {
-    message.info("保存功能已集成到编辑器");
+    // Handled in component
   }, []);
 
   return {
@@ -336,6 +359,8 @@ export const useCollaborationEditor = ({
     users,
     currentVersion,
     connected,
+    saved,
+    markSaved,
     save,
     error,
   };

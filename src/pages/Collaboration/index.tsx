@@ -12,6 +12,7 @@ import {
   TeamOutlined,
   UserOutlined,
   CheckCircleOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 import "@/pages/Collaboration/index.css";
 import { useCollaborationEditor } from "@/hooks/useCollaborationEditor";
@@ -37,6 +38,8 @@ const CollaborationPage = () => {
     users,
     currentVersion,
     connected,
+    saved,
+    markSaved,
     error,
   } = useCollaborationEditor({
     fileId,
@@ -59,6 +62,7 @@ const CollaborationPage = () => {
     try {
       const blob = new Blob([content], { type: "text/markdown" });
       await saveFileContentApi(fileId, parentId, blob, fileTitle);
+      markSaved();
       setLastSaved(new Date());
       message.success("文件保存成功");
     } catch {
@@ -69,10 +73,10 @@ const CollaborationPage = () => {
   };
 
   const handleBack = () => {
-    if (session?.sessionId) {
+    if (session?.sessionId && !saved) {
       Modal.confirm({
         title: "确认离开",
-        content: "离开页面将断开协同连接，但不会丢失未保存的内容",
+        content: "文件尚未保存，离开将丢失未保存的内容",
         onOk: () => navigate(-1),
       });
     } else {
@@ -115,9 +119,12 @@ const CollaborationPage = () => {
                 v{currentVersion}
               </Tag>
             </Tooltip>
-            {lastSaved && (
+            <Tag icon={saved ? <CheckCircleOutlined /> : <CloseCircleOutlined />} color={saved ? "green" : "orange"}>
+              {saved ? "已保存" : "未保存"}
+            </Tag>
+            {lastSaved && saved && (
               <span className="mpcs-collab-saved-time">
-                已保存 {lastSaved.toLocaleTimeString()}
+                {lastSaved.toLocaleTimeString()}
               </span>
             )}
           </Space>
