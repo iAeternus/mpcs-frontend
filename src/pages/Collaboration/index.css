@@ -1,0 +1,292 @@
+/**
+ * 协同编辑页面样式
+ */
+
+.mpcs-collab-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  overflow: hidden;
+}
+
+.mpcs-collab-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.mpcs-collab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mpcs-collab-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mpcs-collab-back-btn {
+  font-size: 18px;
+  color: #333;
+}
+
+.mpcs-collab-back-btn:hover {
+  color: #667eea;
+}
+
+.mpcs-collab-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mpcs-collab-status-tag {
+  font-size: 12px;
+}
+
+.mpcs-collab-header-center {
+  display: flex;
+  align-items: center;
+}
+
+.mpcs-collab-saved-time {
+  font-size: 12px;
+  color: #52c41a;
+}
+
+.mpcs-collab-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.mpcs-collab-users {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 12px;
+  border-right: 1px solid #e8e8e8;
+  margin-right: 12px;
+}
+
+.mpcs-collab-user-count {
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.mpcs-collab-user-tag {
+  cursor: default;
+}
+
+.mpcs-collab-save-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.mpcs-collab-save-btn:hover {
+  opacity: 0.9;
+}
+
+.mpcs-collab-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.mpcs-collab-hint {
+  font-size: 12px;
+  color: #999;
+}
+
+.mpcs-collab-container {
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+}
+
+.mpcs-collab-editor-card {
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.mpcs-collab-editor-card .ant-card-body {
+  padding: 0;
+}
+
+.mpcs-collab-editor-wrapper {
+  display: flex;
+  height: 100%;
+}
+
+.mpcs-collab-textarea {
+  border: none;
+  border-radius: 0;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+}
+
+.mpcs-collab-textarea:focus {
+  box-shadow: none;
+}
+
+.mpcs-collab-split-view {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.mpcs-collab-edit-pane {
+  flex: 1;
+  border-right: 1px solid #e8e8e8;
+  overflow: auto;
+}
+
+.mpcs-collab-preview-pane {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  background: #fafafa;
+}
+
+.mpcs-collab-preview {
+  padding: 16px;
+  min-height: 100%;
+  line-height: 1.6;
+}
+
+.mpcs-collab-preview h1 {
+  font-size: 28px;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.mpcs-collab-preview h2 {
+  font-size: 22px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 6px;
+  margin: 24px 0 12px;
+}
+
+.mpcs-collab-preview h3 {
+  font-size: 18px;
+  margin: 20px 0 10px;
+}
+
+.mpcs-collab-preview p {
+  margin: 12px 0;
+}
+
+.mpcs-collab-preview pre {
+  background: #2d2d2d;
+  color: #f8f8f2;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.mpcs-collab-preview code {
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 0.9em;
+}
+
+.mpcs-collab-preview pre code {
+  background: none;
+  padding: 0;
+}
+
+.mpcs-collab-preview blockquote {
+  border-left: 4px solid #667eea;
+  margin: 16px 0;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  color: #555;
+}
+
+.mpcs-collab-preview ul,
+.mpcs-collab-preview ol {
+  padding-left: 24px;
+  margin: 12px 0;
+}
+
+.mpcs-collab-preview li {
+  margin: 4px 0;
+}
+
+.mpcs-collab-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.mpcs-collab-preview th,
+.mpcs-collab-preview td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.mpcs-collab-preview th {
+  background: #667eea;
+  color: white;
+}
+
+.mpcs-collab-preview tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.mpcs-collab-empty {
+  color: #999;
+  font-style: italic;
+}
+
+.mpcs-collab-footer {
+  padding: 8px 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+.mpcs-collab-footer-text {
+  font-size: 12px;
+  color: #999;
+}
+
+@media (max-width: 768px) {
+  .mpcs-collab-split-view {
+    flex-direction: column;
+  }
+
+  .mpcs-collab-edit-pane {
+    border-right: none;
+    border-bottom: 1px solid #e8e8e8;
+  }
+
+  .mpcs-collab-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .mpcs-collab-header-center {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+}

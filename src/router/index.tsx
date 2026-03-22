@@ -6,6 +6,7 @@ import { UserPage } from "@/pages/User";
 import { useAppSelector } from "@/store";
 import { selectToken } from "@/store/modules/authStore";
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import CollaborationPage from "@/pages/Collaboration";
 
 const RedirectByAuth = () => {
   const token = useAppSelector(selectToken);
@@ -60,6 +61,10 @@ const router = createBrowserRouter([
       {
         path: "user",
         element: <UserPage />,
+      },
+      {
+        path: "collaboration",
+        element: <CollaborationPage />,
       },
     ],
   },

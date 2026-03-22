@@ -18,6 +18,7 @@ import {
   renameFileApi,
 } from "@/apis/file";
 import { useFilePreview } from "@/hooks/useFilePreview";
+import { useNavigate } from "react-router-dom";
 import { buildTreeData, formatFileSize, ROOT_OPTION } from "./utils";
 import { HierarchyDetailPane } from "./HierarchyDetailPane";
 import { HierarchyTreePane } from "./HierarchyTreePane";
@@ -35,6 +36,7 @@ interface FolderHierarchyProps {
 export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
   customId,
 }) => {
+  const navigate = useNavigate();
   const { openPreview, previewModal } = useFilePreview();
   const { loading, idTree, folderMap, folderNameMap, nodeMap, reload } =
     useFolderHierarchy(customId);
@@ -362,6 +364,16 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
         onClick: async () => {
           await downloadFile(file);
           message.success("下载成功");
+        },
+      },
+      {
+        key: "collab-edit",
+        label: "协同编辑",
+        onClick: async () => {
+          const parentFolderId = file.parentId || rootFolderId;
+          navigate(
+            `/home/collaboration?fileId=${encodeURIComponent(file.id)}&title=${encodeURIComponent(file.filename)}&parentId=${encodeURIComponent(parentFolderId || "")}`
+          );
         },
       },
       {

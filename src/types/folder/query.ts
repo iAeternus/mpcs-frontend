@@ -19,4 +19,5 @@ export interface HierarchyFile {
   filename: string;
   size: number;
   status: FileStatus;
+  parentId?: string;
 }
