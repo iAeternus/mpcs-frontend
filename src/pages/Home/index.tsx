@@ -1,15 +1,11 @@
 import { useState } from "react";
-import { Layout } from "antd";
 import { PersonalSpace } from "./features/content/PersonalSpace";
 import { TeamSpace } from "./features/content/TeamSpace/index";
 import { PublicSpace } from "./features/content/PublicSpace/index";
 import { PostManage } from "./features/content/PostManage";
 import { UsagePage } from "./features/content/UsagePage";
-import { HomeHeader } from "./layout/HomeHeader";
-import { HomeSidebar } from "./layout/HomeSidebar";
-import { HomeFooter } from "./layout/HomeFooter";
+import { AppLayout } from "@/components/layout";
 
-const { Content } = Layout;
 export type HomeTabKey =
   | "usage"
   | "personal"
@@ -36,39 +32,23 @@ export const Home = () => {
   };
 
   return (
-    <div className="mpcs-theme-scope relative min-h-screen overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 dark:from-[#1c1c2b] dark:via-[#111827] dark:to-[#0f111a]" />
-      <div className="absolute -left-40 -top-40 h-[400px] w-[400px] rounded-full bg-white/20 blur-3xl" />
-      <div className="absolute -bottom-40 -right-40 h-[400px] w-[400px] rounded-full bg-white/20 blur-3xl" />
-
-      <Layout className="relative min-h-screen bg-transparent">
-        <HomeHeader onGoUsage={() => setActive("usage")} />
-
-        <Layout className="gap-4 px-4 py-4">
-          <HomeSidebar active={active} onChange={setActive} />
-
-          <Content className="flex justify-center min-w-0">
-            <div
-              className="
-                mpcs-home-content-card
-                w-full min-h-[75vh]
-                rounded-2xl
-                bg-white/80 dark:bg-white/5
-                backdrop-blur-xl
-                shadow-[0_20px_60px_rgba(0,0,0,0.25)]
-              "
-              style={{
-                padding: 0,
-                overflow: "hidden",
-              }}
-            >
-              {renderContent()}
-            </div>
-          </Content>
-        </Layout>
-
-        <HomeFooter />
-      </Layout>
+    <div 
+      className="min-h-screen"
+      style={{ backgroundColor: "var(--color-bg-base)" }}
+    >
+      <AppLayout activeTab={active} onTabChange={setActive}>
+        <div 
+          className="h-full rounded-lg p-4"
+          style={{ 
+            backgroundColor: "var(--color-surface-primary)",
+            border: "1px solid var(--color-border-default)"
+          }}
+        >
+          {renderContent()}
+        </div>
+      </AppLayout>
     </div>
   );
 };
+
+export default Home;

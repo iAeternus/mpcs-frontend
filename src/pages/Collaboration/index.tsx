@@ -1,9 +1,9 @@
 /**
- * 协同编辑页面
+ * 协同编辑页面 - IDE风格布局
  */
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Card, Tag, Tooltip, Spin, message, Space, Modal, Avatar } from "antd";
+import { Button, Tag, Tooltip, Spin, message, Space, Modal, Avatar } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import type { TextAreaRef } from "antd/es/input/TextArea";
 import Markdown from "react-markdown";
@@ -30,7 +30,6 @@ const CollaborationPage = () => {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [markdownMode, setMarkdownMode] = useState<"edit" | "preview" | "editAndPreview">("editAndPreview");
-  const [editorHeight] = useState("calc(100vh - 200px)");
   const textareaRef = useRef<TextAreaRef>(null);
 
   const {
@@ -93,12 +92,10 @@ const CollaborationPage = () => {
 
   if (loading) {
     return (
-      <div className="mpcs-collab-page">
-        <div className="mpcs-collab-loading">
-          <Spin size="large">
-            <div style={{ padding: "20px" }}>正在初始化协同编辑会话...</div>
-          </Spin>
-        </div>
+      <div className="collab-page-loading">
+        <Spin size="large">
+          <div style={{ padding: "20px" }}>正在初始化协同编辑会话...</div>
+        </Spin>
       </div>
     );
   }
@@ -106,18 +103,118 @@ const CollaborationPage = () => {
   const onlineUsers = users.filter((u) => u.online);
   const otherUsers = onlineUsers.filter((u) => u.oderId !== session?.activeUsers?.[0]?.oderId);
 
+  // IDE风格布局样式
+  const pageStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    backgroundColor: 'var(--color-bg-base)',
+  };
+
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 'var(--space-2) var(--space-4)',
+    backgroundColor: 'var(--color-surface-primary)',
+    borderBottom: '1px solid var(--color-border-default)',
+    minHeight: 48,
+  };
+
+  const headerLeftStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-3)',
+  };
+
+  const headerCenterStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-2)',
+  };
+
+  const headerRightStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-3)',
+  };
+
+  const titleStyle: React.CSSProperties = {
+    fontSize: 'var(--text-base)',
+    fontWeight: 'var(--font-medium)',
+    color: 'var(--color-text-primary)',
+    margin: 0,
+  };
+
+  const toolbarStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 'var(--space-2) var(--space-4)',
+    backgroundColor: 'var(--color-surface-secondary)',
+    borderBottom: '1px solid var(--color-border-default)',
+  };
+
+  const editorContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
+  };
+
+  const editorPaneStyle: React.CSSProperties = {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: 'var(--color-surface-primary)',
+  };
+
+  const previewPaneStyle: React.CSSProperties = {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'auto',
+    padding: 'var(--space-4)',
+    backgroundColor: 'var(--color-surface-primary)',
+    borderLeft: '1px solid var(--color-border-default)',
+  };
+
+  const textareaContainerStyle: React.CSSProperties = {
+    flex: 1,
+    position: 'relative',
+    overflow: 'auto',
+  };
+
+  const textareaStyle: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    minHeight: '100%',
+    padding: 'var(--space-4)',
+    border: 'none',
+    borderRadius: 0,
+    resize: 'none',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-sm)',
+    lineHeight: 'var(--leading-relaxed)',
+    backgroundColor: 'var(--color-surface-primary)',
+    color: 'var(--color-text-primary)',
+  };
+
   return (
-    <div className="mpcs-collab-page">
-      <div className="mpcs-collab-header">
-        <div className="mpcs-collab-header-left">
+    <div style={pageStyle}>
+      {/* 顶部栏 */}
+      <div style={headerStyle}>
+        <div style={headerLeftStyle}>
           <Button
             type="text"
             icon={<ArrowLeftOutlined />}
             onClick={handleBack}
-            className="mpcs-collab-back-btn"
-          />
-          <span className="mpcs-collab-title">{fileTitle}</span>
-          <Tag color={connected ? "green" : "red"} className="mpcs-collab-status-tag">
+            size="small"
+          >
+            返回
+          </Button>
+          <span style={titleStyle}>{fileTitle}</span>
+          <Tag color={connected ? "green" : "red"} style={{ margin: 0 }}>
             {connected ? "已连接" : "未连接"}
           </Tag>
           {!connected && (
@@ -149,7 +246,7 @@ const CollaborationPage = () => {
           )}
         </div>
 
-        <div className="mpcs-collab-header-center">
+        <div style={headerCenterStyle}>
           <Space>
             <Tooltip title="当前版本">
               <Tag icon={<CheckCircleOutlined />}>
@@ -160,27 +257,27 @@ const CollaborationPage = () => {
               {saved ? "已保存" : "未保存"}
             </Tag>
             {lastSaved && saved && (
-              <span className="mpcs-collab-saved-time">
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
                 {lastSaved.toLocaleTimeString()}
               </span>
             )}
           </Space>
         </div>
 
-        <div className="mpcs-collab-header-right">
+        <div style={headerRightStyle}>
           <Space>
-            <div className="mpcs-collab-users">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <TeamOutlined />
-              <span className="mpcs-collab-user-count">{onlineUsers.length}</span>
-              <div className="mpcs-collab-user-avatars">
+              <span style={{ fontSize: 'var(--text-sm)' }}>{onlineUsers.length}</span>
+              <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
                 {onlineUsers.map((user) => (
                   <Tooltip key={user.oderId} title={`${user.username}${user.oderId === session?.activeUsers?.[0]?.oderId ? " (你)" : ""}`}>
                     <Avatar
                       size="small"
-                      className="mpcs-collab-user-avatar"
                       style={{
                         backgroundColor: getUserColor(user.oderId),
                         cursor: "default",
+                        fontSize: 'var(--text-xs)',
                       }}
                     >
                       {user.username.charAt(0).toUpperCase()}
@@ -189,7 +286,7 @@ const CollaborationPage = () => {
                 ))}
               </div>
               {otherUsers.length > 0 && (
-                <Tag color="blue" className="mpcs-collab-editing-tag">
+                <Tag color="blue" style={{ margin: 0, fontSize: 'var(--text-xs)' }}>
                   {otherUsers.map((u) => u.username).join(", ")} 正在编辑
                 </Tag>
               )}
@@ -199,7 +296,7 @@ const CollaborationPage = () => {
               icon={<SaveOutlined />}
               loading={saving}
               onClick={handleSave}
-              className="mpcs-collab-save-btn"
+              size="small"
             >
               保存
             </Button>
@@ -207,122 +304,91 @@ const CollaborationPage = () => {
         </div>
       </div>
 
-      <div className="mpcs-collab-toolbar">
+      {/* 工具栏 */}
+      <div style={toolbarStyle}>
         <Space>
           <Button
             type={markdownMode === "edit" ? "primary" : "default"}
             onClick={() => setMarkdownMode("edit")}
+            size="small"
           >
             编辑
           </Button>
           <Button
             type={markdownMode === "preview" ? "primary" : "default"}
             onClick={() => setMarkdownMode("preview")}
+            size="small"
           >
             预览
           </Button>
           <Button
             type={markdownMode === "editAndPreview" ? "primary" : "default"}
             onClick={() => setMarkdownMode("editAndPreview")}
+            size="small"
           >
             编辑+预览
           </Button>
         </Space>
-        <span className="mpcs-collab-hint">
+        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-tertiary)' }}>
           支持 Markdown 语法，实时协同编辑
         </span>
       </div>
 
-      <div className="mpcs-collab-container">
-        <Card className="mpcs-collab-editor-card">
-          {markdownMode === "preview" ? (
-            <div className="mpcs-collab-preview markdown-body" style={{ minHeight: editorHeight }}>
+      {/* 编辑器区域 */}
+      <div style={editorContainerStyle}>
+        {markdownMode === "preview" ? (
+          <div style={{ ...previewPaneStyle, flex: 1 }}>
+            <div className="markdown-body">
               <Markdown>{content || "*开始编辑你的文档...*"}</Markdown>
             </div>
-          ) : (
-            <div className="mpcs-collab-editor-wrapper">
-              {markdownMode === "edit" && (
-                <div className="mpcs-collab-textarea-container">
-                  <TextArea
-                    ref={textareaRef}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    onSelect={handleTextareaSelect}
-                    className="mpcs-collab-textarea"
-                    placeholder="开始编辑你的 Markdown 文档..."
-                    autoSize={{ minRows: 20 }}
-                    style={{ minHeight: editorHeight }}
-                  />
-                  <div className="mpcs-collab-cursor-labels">
-                    {otherUsers.map((user) => {
-                      const cursorPos = session?.cursors?.[user.oderId]?.position || 0;
-                      return (
-                        <Tooltip key={user.oderId} title={`${user.username} 的光标位置`}>
-                          <div
-                            className="mpcs-collab-cursor-label"
-                            style={{
-                              backgroundColor: getUserColor(user.oderId),
-                              top: `${Math.floor(cursorPos / 80) * 20}px`,
-                            }}
-                          >
-                            {user.username}
-                          </div>
-                        </Tooltip>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {markdownMode === "editAndPreview" && (
-                <div className="mpcs-collab-split-view">
-                  <div className="mpcs-collab-edit-pane">
-                    <div className="mpcs-collab-textarea-container">
-                      <TextArea
-                        ref={textareaRef}
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        onSelect={handleTextareaSelect}
-                        className="mpcs-collab-textarea"
-                        placeholder="开始编辑..."
-                        autoSize={{ minRows: 20 }}
-                        style={{ height: editorHeight }}
-                      />
-                      <div className="mpcs-collab-cursor-labels">
-                        {otherUsers.map((user) => {
-                          const cursorPos = session?.cursors?.[user.oderId]?.position || 0;
-                          return (
-                            <Tooltip key={user.oderId} title={`${user.username} 的光标位置`}>
-                              <div
-                                className="mpcs-collab-cursor-label"
-                                style={{
-                                  backgroundColor: getUserColor(user.oderId),
-                                  top: `${Math.floor(cursorPos / 80) * 20}px`,
-                                }}
-                              >
-                                {user.username}
-                              </div>
-                            </Tooltip>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mpcs-collab-preview-pane">
-                    <div className="mpcs-collab-preview markdown-body">
-                      <Markdown>{content || "*预览区域*"}</Markdown>
-                    </div>
-                  </div>
-                </div>
-              )}
+          </div>
+        ) : markdownMode === "edit" ? (
+          <div style={editorPaneStyle}>
+            <div style={textareaContainerStyle}>
+              <TextArea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onSelect={handleTextareaSelect}
+                placeholder="开始编辑你的 Markdown 文档..."
+                autoSize={{ minRows: 20 }}
+                style={textareaStyle}
+              />
             </div>
-          )}
-        </Card>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div style={{ ...editorPaneStyle, flex: 1, borderRight: '1px solid var(--color-border-default)' }}>
+              <div style={textareaContainerStyle}>
+                <TextArea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  onSelect={handleTextareaSelect}
+                  placeholder="开始编辑..."
+                  autoSize={{ minRows: 20 }}
+                  style={textareaStyle}
+                />
+              </div>
+            </div>
+            <div style={previewPaneStyle}>
+              <div className="markdown-body">
+                <Markdown>{content || "*预览区域*"}</Markdown>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="mpcs-collab-footer">
-        <span className="mpcs-collab-footer-text">
-          协同编辑 - {onlineUsers.length} 人在线
-        </span>
+      {/* 底部状态栏 */}
+      <div style={{
+        padding: 'var(--space-1) var(--space-4)',
+        backgroundColor: 'var(--color-surface-secondary)',
+        borderTop: '1px solid var(--color-border-default)',
+        fontSize: 'var(--text-xs)',
+        color: 'var(--color-text-tertiary)',
+      }}>
+        <span>协同编辑 - {onlineUsers.length} 人在线</span>
       </div>
     </div>
   );

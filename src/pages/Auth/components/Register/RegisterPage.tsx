@@ -32,124 +32,174 @@ export const RegisterPage = () => {
     antdMessage.success(`验证码是：${res.id}`);
   };
 
+  const containerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    backgroundColor: 'var(--color-bg-base)',
+    padding: 'var(--space-4)',
+  };
+
+  const cardStyle: React.CSSProperties = {
+    width: '100%',
+    maxWidth: 400,
+    padding: 'var(--space-8)',
+    backgroundColor: 'var(--color-surface-primary)',
+    borderRadius: 'var(--radius-xl)',
+    border: '1px solid var(--color-border-default)',
+    boxShadow: 'var(--shadow-lg)',
+  };
+
+  const titleStyle: React.CSSProperties = {
+    textAlign: 'center',
+    marginBottom: 'var(--space-2)',
+    fontSize: 'var(--text-2xl)',
+    fontWeight: 'var(--font-semibold)',
+    color: 'var(--color-text-primary)',
+  };
+
+  const subtitleStyle: React.CSSProperties = {
+    textAlign: 'center',
+    marginBottom: 'var(--space-6)',
+    color: 'var(--color-text-tertiary)',
+    fontSize: 'var(--text-sm)',
+  };
+
+  const footerStyle: React.CSSProperties = {
+    marginTop: 'var(--space-6)',
+    textAlign: 'center',
+    fontSize: 'var(--text-sm)',
+    color: 'var(--color-text-tertiary)',
+  };
+
+  const linkStyle: React.CSSProperties = {
+    color: 'var(--color-brand)',
+    cursor: 'pointer',
+  };
+
+  const buttonGroupStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: 'var(--space-2)',
+  };
+
   return (
-    <div className="auth-light-inputs min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-500 via-indigo-500 to-purple-600 relative overflow-hidden">
-      <div className="absolute -top-32 -left-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
-      <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
+    <div style={containerStyle}>
+      <div style={cardStyle}>
+        <Typography.Title level={2} style={titleStyle}>
+          Create Account
+        </Typography.Title>
+        <p style={subtitleStyle}>开始您的云存储之旅</p>
 
-      <div className="relative z-10 w-full max-w-md px-6">
-        <div className="backdrop-blur-xl bg-white/85 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] p-10 border border-white/40">
-          <div className="text-center mb-8">
-            <Typography.Title level={2}>Create Account</Typography.Title>
-            <p className="text-gray-500">开始您的云存储之旅</p>
-          </div>
-
-          <Form
-            form={form}
-            validateTrigger="onBlur"
-            onFinish={onFinish}
-            layout="vertical"
-          >
-            <Form.Item name="username" rules={RULES.username}>
-              <Input
-                prefix={<UserOutlined />}
-                placeholder="用户名"
-                size="large"
-                className="rounded-xl"
-              />
-            </Form.Item>
-
-            <Form.Item name="mobileOrEmail" rules={RULES.mobileOrEmail}>
-              <Input
-                prefix={<MailOutlined />}
-                placeholder="邮箱 / 手机号"
-                size="large"
-                className="rounded-xl"
-              />
-            </Form.Item>
-
-            <Form.Item name="verification" rules={RULES.verification}>
-              <div className="flex gap-2">
-                <Input
-                  prefix={<SafetyOutlined />}
-                  placeholder="验证码"
-                  size="large"
-                  className="rounded-xl"
-                />
-                <Button
-                  onClick={handleGetVerificationCode}
-                  size="large"
-                  className="rounded-xl"
-                >
-                  获取
-                </Button>
-              </div>
-            </Form.Item>
-
-            <Form.Item name="password" rules={RULES.password}>
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="密码"
-                size="large"
-                className="rounded-xl"
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="confirmPassword"
-              dependencies={["password"]}
-              rules={RULES.confirmPassword}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="确认密码"
-                size="large"
-                className="rounded-xl"
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="agreement"
-              valuePropName="checked"
-              rules={[
-                {
-                  validator: (_, v) =>
-                    v
-                      ? Promise.resolve()
-                      : Promise.reject(new Error("请同意协议")),
-                },
-              ]}
-            >
-              <Checkbox>
-                同意
-                <Link to="/agreement" className="text-indigo-600 ml-1">
-                  用户协议
-                </Link>
-                和
-                <Link to="/privacy" className="text-indigo-600 ml-1">
-                  隐私政策
-                </Link>
-              </Checkbox>
-            </Form.Item>
-
-            <Button
-              type="primary"
-              htmlType="submit"
+        <Form
+          form={form}
+          validateTrigger="onBlur"
+          onFinish={onFinish}
+          layout="vertical"
+        >
+          <Form.Item name="username" rules={RULES.username}>
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="用户名"
               size="large"
-              className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600"
-            >
-              注册
-            </Button>
-          </Form>
+            />
+          </Form.Item>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            已有账号？
-            <Link to="/login" className="ml-1 text-indigo-600 hover:underline">
-              去登录
-            </Link>
-          </div>
+          <Form.Item name="mobileOrEmail" rules={RULES.mobileOrEmail}>
+            <Input
+              prefix={<MailOutlined />}
+              placeholder="邮箱 / 手机号"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item name="verification" rules={RULES.verification}>
+            <div style={buttonGroupStyle}>
+              <Input
+                prefix={<SafetyOutlined />}
+                placeholder="验证码"
+                size="large"
+                style={{ flex: 1 }}
+              />
+              <Button
+                onClick={handleGetVerificationCode}
+                size="large"
+              >
+                获取
+              </Button>
+            </div>
+          </Form.Item>
+
+          <Form.Item name="password" rules={RULES.password}>
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="密码"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="confirmPassword"
+            dependencies={["password"]}
+            rules={RULES.confirmPassword}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="确认密码"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="agreement"
+            valuePropName="checked"
+            rules={[
+              {
+                validator: (_, v) =>
+                  v
+                    ? Promise.resolve()
+                    : Promise.reject(new Error("请同意协议")),
+              },
+            ]}
+          >
+            <Checkbox>
+              同意
+              <Link to="/agreement" style={linkStyle}>
+                用户协议
+              </Link>
+              和
+              <Link to="/privacy" style={linkStyle}>
+                隐私政策
+              </Link>
+            </Checkbox>
+          </Form.Item>
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            block
+            style={{
+              height: 44,
+              fontSize: 'var(--text-base)',
+              fontWeight: 'var(--font-medium)',
+              backgroundColor: 'var(--color-brand)',
+              borderColor: 'var(--color-brand)',
+            }}
+          >
+            注册
+          </Button>
+        </Form>
+
+        <div style={footerStyle}>
+          <span style={{ color: 'var(--color-text-tertiary)' }}>已有账号？</span>
+          <Link to="/login" style={linkStyle}>
+            去登录
+          </Link>
         </div>
       </div>
     </div>
   );
 };
+
+export default RegisterPage;

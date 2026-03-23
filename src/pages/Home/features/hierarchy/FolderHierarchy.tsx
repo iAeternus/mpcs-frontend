@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, Input, Modal, TreeSelect, message, theme } from "antd";
+import { Input, Modal, TreeSelect, message } from "antd";
 import type { MenuProps, TreeSelectProps } from "antd";
 import type { IdNode } from "@/types/common/idtree";
 import type { HierarchyFile, HierarchyFolder } from "@/types/folder/query";
@@ -19,8 +19,7 @@ import {
 } from "@/apis/file";
 import { useFilePreview } from "@/hooks/useFilePreview";
 import { useNavigate } from "react-router-dom";
-import { buildTreeData, formatFileSize, ROOT_OPTION } from "./utils";
-import { HierarchyDetailPane } from "./HierarchyDetailPane";
+import { buildTreeData, ROOT_OPTION } from "./utils";
 import { HierarchyTreePane } from "./HierarchyTreePane";
 import { useUploadHandler } from "./components/useUploadHandler";
 import { useUploadProgress } from "./UploadProgressModal";
@@ -39,7 +38,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
 }) => {
   const navigate = useNavigate();
   const { openPreview, previewModal } = useFilePreview();
-  const { loading, idTree, folderMap, folderNameMap, nodeMap, reload } =
+  const { loading, idTree, folderMap, nodeMap, reload } =
     useFolderHierarchy(customId);
   const { state, closeUpload, startUpload, setStep, setHashProgress, setUploadProgress, setTotalChunks, incrementUploadedChunks, UploadProgressComponent } = useUploadProgress();
   const { uploadFile } = useUploadHandler(reload, {
@@ -52,7 +51,6 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     closeUpload,
   });
 
-  const { token } = theme.useToken();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,34 +59,7 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     setCurrentFolderId(firstId);
   }, [currentFolderId, folderMap, idTree]);
 
-  const currentFolder: HierarchyFolder | undefined = currentFolderId
-    ? folderMap[currentFolderId]
-    : undefined;
-
-  const childFolders = useMemo(() => {
-    if (!currentFolderId) return [];
-    return Object.values(folderMap).filter(
-      (folder) => folder.parentId === currentFolderId,
-    );
-  }, [currentFolderId, folderMap]);
-
   const rootFolderId = useMemo(() => idTree[0]?.id ?? null, [idTree]);
-
-  const files: HierarchyFile[] = useMemo(() => {
-    if (!currentFolder?.files) return [];
-    return currentFolder.files.filter(
-      (file) => typeof file.size === "number" && !Number.isNaN(file.size),
-    );
-  }, [currentFolder]);
-
-  const breadcrumbItems = useMemo(() => {
-    if (!currentFolder) return [];
-    const parts = currentFolder.path.split("/");
-    return parts.map((id) => ({
-      id,
-      name: folderNameMap[id] ?? "未命名文件夹",
-    }));
-  }, [currentFolder, folderNameMap]);
 
   const moveFolderTreeData = useMemo(() => {
     const mapToTree = (
@@ -413,34 +384,27 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
     [idTree, folderMap],
   );
 
+  const containerStyle: React.CSSProperties = {
+    height: '100%',
+    backgroundColor: 'var(--color-surface-primary)',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--color-border-default)',
+    overflow: 'hidden',
+  };
+
   return (
     <>
-      <Card className="w-full rounded-3xl border border-white/60 bg-white/60 shadow-xl backdrop-blur">
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <HierarchyTreePane
-            loading={loading}
-            treeData={treeData}
-            currentFolderId={currentFolderId}
-            setCurrentFolderId={setCurrentFolderId}
-            buildFolderMenu={buildFolderMenu}
-            buildFileMenu={buildFileMenu}
-            previewFileInBrowser={previewFileInBrowser}
-          />
-
-          <HierarchyDetailPane
-            breadcrumbItems={breadcrumbItems}
-            setCurrentFolderId={setCurrentFolderId}
-            childFolders={childFolders}
-            buildFolderMenu={buildFolderMenu}
-            folderCardTextColor={token.colorText}
-            files={files}
-            currentFolderId={currentFolderId}
-            buildFileMenu={buildFileMenu}
-            previewFileInBrowser={previewFileInBrowser}
-            formatFileSize={formatFileSize}
-          />
-        </div>
-      </Card>
+      <div style={containerStyle}>
+        <HierarchyTreePane
+          loading={loading}
+          treeData={treeData}
+          currentFolderId={currentFolderId}
+          setCurrentFolderId={setCurrentFolderId}
+          buildFolderMenu={buildFolderMenu}
+          buildFileMenu={buildFileMenu}
+          previewFileInBrowser={previewFileInBrowser}
+        />
+      </div>
       {previewModal}
       <UploadProgressComponent state={state} onClose={closeUpload} />
     </>

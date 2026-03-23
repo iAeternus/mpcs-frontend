@@ -18,72 +18,111 @@ export const LoginPage = () => {
     navigate("/");
   };
 
+  const containerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    backgroundColor: 'var(--color-bg-base)',
+    padding: 'var(--space-4)',
+  };
+
+  const cardStyle: React.CSSProperties = {
+    width: '100%',
+    maxWidth: 400,
+    padding: 'var(--space-8)',
+    backgroundColor: 'var(--color-surface-primary)',
+    borderRadius: 'var(--radius-xl)',
+    border: '1px solid var(--color-border-default)',
+    boxShadow: 'var(--shadow-lg)',
+  };
+
+  const titleStyle: React.CSSProperties = {
+    textAlign: 'center',
+    marginBottom: 'var(--space-2)',
+    fontSize: 'var(--text-2xl)',
+    fontWeight: 'var(--font-semibold)',
+    color: 'var(--color-text-primary)',
+  };
+
+  const subtitleStyle: React.CSSProperties = {
+    textAlign: 'center',
+    marginBottom: 'var(--space-6)',
+    color: 'var(--color-text-tertiary)',
+    fontSize: 'var(--text-sm)',
+  };
+
+  const footerStyle: React.CSSProperties = {
+    marginTop: 'var(--space-6)',
+    textAlign: 'center',
+    fontSize: 'var(--text-sm)',
+    color: 'var(--color-text-tertiary)',
+  };
+
+  const linkStyle: React.CSSProperties = {
+    color: 'var(--color-brand)',
+    cursor: 'pointer',
+  };
+
   return (
-    <div className="auth-light-inputs min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
-      {/* 光斑 */}
-      <div className="absolute -top-32 -left-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
-      <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] bg-white/20 rounded-full blur-3xl" />
+    <div style={containerStyle}>
+      <div style={cardStyle}>
+        <Typography.Title level={2} style={titleStyle}>
+          Welcome Back
+        </Typography.Title>
+        <p style={subtitleStyle}>登录以继续使用系统</p>
 
-      {/* 卡片 */}
-      <div className="relative z-10 w-full max-w-md px-6">
-        <div className="backdrop-blur-xl bg-white/80 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] p-10 border border-white/40">
-          <div className="text-center mb-8">
-            <Typography.Title level={2} className="!mb-1 !font-semibold">
-              Welcome Back
-            </Typography.Title>
-            <p className="text-gray-500">登录以继续使用系统</p>
-          </div>
-
-          <Form
-            form={form}
-            validateTrigger="onBlur"
-            onFinish={onFinish}
-            layout="vertical"
-          >
-            <Form.Item name="mobileOrEmail" rules={RULES.mobileOrEmail}>
-              <Input
-                prefix={<UserOutlined />}
-                placeholder="邮箱 / 手机号"
-                size="large"
-                className="rounded-xl"
-              />
-            </Form.Item>
-
-            <Form.Item name="password" rules={RULES.password}>
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="密码"
-                size="large"
-                className="rounded-xl"
-              />
-            </Form.Item>
-
-            <Button
-              type="primary"
-              htmlType="submit"
+        <Form
+          form={form}
+          validateTrigger="onBlur"
+          onFinish={onFinish}
+          layout="vertical"
+        >
+          <Form.Item name="mobileOrEmail" rules={RULES.mobileOrEmail}>
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="邮箱 / 手机号"
               size="large"
-              className="w-full h-12 rounded-xl text-base font-medium bg-gradient-to-r from-indigo-500 to-purple-600"
-            >
-              登录
-            </Button>
-          </Form>
+            />
+          </Form.Item>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <Link to="" className="hover:text-indigo-600">
-              忘记密码？
+          <Form.Item name="password" rules={RULES.password}>
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="密码"
+              size="large"
+            />
+          </Form.Item>
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            block
+            style={{
+              height: 44,
+              fontSize: 'var(--text-base)',
+              fontWeight: 'var(--font-medium)',
+              backgroundColor: 'var(--color-brand)',
+              borderColor: 'var(--color-brand)',
+            }}
+          >
+            登录
+          </Button>
+        </Form>
+
+        <div style={footerStyle}>
+          <span style={{ color: 'var(--color-text-tertiary)' }}>忘记密码？</span>
+          <div style={{ marginTop: 'var(--space-2)' }}>
+            <span style={{ color: 'var(--color-text-tertiary)' }}>没有账号？</span>
+            <Link to="/login/register" style={linkStyle}>
+              立即注册
             </Link>
-            <div className="mt-2">
-              没有账号？
-              <Link
-                to="/login/register"
-                className="ml-1 text-indigo-600 hover:underline"
-              >
-                立即注册
-              </Link>
-            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default LoginPage;

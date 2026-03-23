@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
-  Card,
   Empty,
   Input,
   Modal,
   Popconfirm,
-  Space,
   Spin,
   message,
 } from "antd";
 import type { GroupResponse } from "@/types/group/query";
 import {
   activateGroupApi,
-  createGroupApi,
   deactivateGroupApi,
   deleteGroupApi,
   pageMyGroupsAsForManagerApi,
@@ -22,7 +19,6 @@ import {
 } from "@/apis/group";
 import { fetchAllGroups, normalizeGroup } from "./utils/teamUtils";
 import type { GroupChoice } from "./types";
-import { SpaceBackground } from "../SpaceBackground";
 import { GroupSelector } from "./components/GroupSelector";
 import { GroupPanel } from "./components/GroupPanel";
 
@@ -33,9 +29,6 @@ export const TeamSpace = () => {
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [groupChoices, setGroupChoices] = useState<GroupChoice[]>([]);
   const [joinedGroupCount, setJoinedGroupCount] = useState(0);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [creating, setCreating] = useState(false);
 
   const loadGroups = useCallback(async () => {
     setLoadingGroups(true);
@@ -86,29 +79,19 @@ export const TeamSpace = () => {
     void loadGroups();
   }, [loadGroups, refreshKey]);
 
+  useEffect(() => {
+    if (selectedGroup && groupChoices.length > 0) {
+      const updated = groupChoices.find(c => c.group.groupId === selectedGroup.group.groupId);
+      if (updated) {
+        setSelectedGroup(updated);
+      }
+    }
+  }, [groupChoices, selectedGroup]);
+
   const managedGroups = useMemo(
     () => groupChoices.filter((choice) => choice.role === "manager"),
     [groupChoices],
   );
-
-  const onCreateGroup = async () => {
-    const name = createName.trim();
-    if (!name) {
-      message.warning("请输入团队名称");
-      return;
-    }
-
-    setCreating(true);
-    try {
-      await createGroupApi({ name });
-      message.success("团队创建成功");
-      setCreateModalOpen(false);
-      setCreateName("");
-      await loadGroups();
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const openRenameGroupModal = (group: { groupId: string; name: string }) => {
     const safeGroupId = group.groupId?.trim() ?? "";
@@ -145,131 +128,179 @@ export const TeamSpace = () => {
     setRefreshKey((k) => k + 1);
   }, []);
 
+  const containerStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    gap: 'var(--space-4)',
+  };
+
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 'var(--space-4)',
+    borderBottom: '1px solid var(--color-border-default)',
+  };
+
+  const titleStyle: React.CSSProperties = {
+    fontSize: 'var(--text-xl)',
+    fontWeight: 'var(--font-semibold)',
+    color: 'var(--color-text-primary)',
+    margin: 0,
+  };
+
+  const descStyle: React.CSSProperties = {
+    fontSize: 'var(--text-sm)',
+    color: 'var(--color-text-tertiary)',
+    margin: 'var(--space-2) 0 0 0',
+  };
+
+  const infoCardStyle: React.CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 'var(--space-3)',
+    padding: 'var(--space-4)',
+    backgroundColor: 'var(--color-surface-secondary)',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--color-border-default)',
+  };
+
+  const managerSectionStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: 'var(--space-2)',
+    flexWrap: 'wrap',
+  };
+
   return (
-    <SpaceBackground paddingClassName="py-10">
-      <div className="relative mx-auto w-full max-w-6xl px-4">
-        <div className="mb-6 text-center">
-          <h2 className="mpcs-text-strong text-3xl font-semibold">团队空间</h2>
-          <p className="mpcs-text-muted mt-2 text-sm">
+    <div style={containerStyle}>
+      <div style={headerStyle}>
+        <div>
+          <h2 style={titleStyle}>团队空间</h2>
+          <p style={descStyle}>
             团队目录与成员协同管理，支持按继承策略批量授权。
           </p>
         </div>
+      </div>
 
-        <GroupSelector
-          onSelect={setSelectedGroup}
-          onRefresh={handleRefresh}
-        />
+      <GroupSelector
+        onSelect={setSelectedGroup}
+        onRefresh={handleRefresh}
+      />
 
-        {loadingGroups ? (
-          <div className="text-center">
-            <Spin />
-          </div>
-        ) : selectedGroup ? (
-          <div className="flex flex-col gap-6">
-            <Card className="rounded-3xl border border-white/55 bg-white/65 shadow-lg backdrop-blur">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-lg font-semibold">
-                    {selectedGroup.group.name}
-                  </div>
-                  <div className="mpcs-text-muted text-sm">
-                    当前身份：{selectedGroup.role === "manager" ? "管理员" : "成员"} ·
-                    状态：
-                    {selectedGroup.group.active ? "启用中" : "已停用"}
-                  </div>
-                </div>
-                <Button onClick={() => setSelectedGroup(null)}>
-                  切换团队
-                </Button>
+      {loadingGroups ? (
+        <div className="flex items-center justify-center" style={{ padding: 'var(--space-8)' }}>
+          <Spin />
+        </div>
+      ) : selectedGroup ? (
+        <div className="flex flex-col gap-4">
+          <div style={infoCardStyle}>
+            <div>
+              <div style={{ 
+                fontSize: 'var(--text-lg)', 
+                fontWeight: 'var(--font-medium)',
+                color: 'var(--color-text-primary)'
+              }}>
+                {selectedGroup.group.name}
               </div>
-            </Card>
+              <div style={{ 
+                fontSize: 'var(--text-sm)', 
+                color: 'var(--color-text-tertiary)',
+                marginTop: 'var(--space-1)'
+              }}>
+                当前身份：{selectedGroup.role === "manager" ? "管理员" : "成员"} · 
+                状态：{selectedGroup.group.active ? "启用中" : "已停用"}
+              </div>
+            </div>
+            <Button onClick={() => setSelectedGroup(null)}>
+              切换团队
+            </Button>
+          </div>
 
-            <GroupPanel
-              group={selectedGroup.group}
-              isManager={selectedGroup.role === "manager"}
-            />
+          <GroupPanel
+            group={selectedGroup.group}
+            isManager={selectedGroup.role === "manager"}
+          />
 
-            {selectedGroup.role === "manager" && (
-              <Card
-                title="团队管理"
-                className="rounded-3xl border border-white/55 bg-white/65 shadow-lg backdrop-blur"
-              >
-                <Space wrap>
-                  <Button onClick={() => openRenameGroupModal(selectedGroup.group)}>
-                    重命名团队
-                  </Button>
-                  {selectedGroup.group.active ? (
-                    <Popconfirm
-                      title="确认停用该团队？"
-                      onConfirm={async () => {
-                        await deactivateGroupApi(selectedGroup.group.groupId);
-                        message.success("团队已停用");
-                        await loadGroups();
-                      }}
-                    >
-                      <Button>停用团队</Button>
-                    </Popconfirm>
-                  ) : (
-                    <Popconfirm
-                      title="确认启用该团队？"
-                      onConfirm={async () => {
-                        await activateGroupApi(selectedGroup.group.groupId);
-                        message.success("团队已启用");
-                        await loadGroups();
-                      }}
-                    >
-                      <Button type="primary">启用团队</Button>
-                    </Popconfirm>
-                  )}
+          {selectedGroup.role === "manager" && (
+            <div style={infoCardStyle}>
+              <div style={{ 
+                fontWeight: 'var(--font-medium)',
+                color: 'var(--color-text-primary)'
+              }}>
+                团队管理
+              </div>
+              <div style={managerSectionStyle}>
+                <Button onClick={() => openRenameGroupModal(selectedGroup.group)}>
+                  重命名团队
+                </Button>
+                {selectedGroup.group.active ? (
                   <Popconfirm
-                    title="确认删除该团队？"
+                    title="确认停用该团队？"
                     onConfirm={async () => {
-                      await deleteGroupApi(selectedGroup.group.groupId);
-                      message.success("团队已删除");
-                      setSelectedGroup(null);
+                      await deactivateGroupApi(selectedGroup.group.groupId);
+                      message.success("团队已停用");
                       await loadGroups();
                     }}
                   >
-                    <Button danger>删除团队</Button>
+                    <Button>停用团队</Button>
                   </Popconfirm>
-                </Space>
-              </Card>
-            )}
-          </div>
-        ) : (
-          <Card className="rounded-3xl border border-white/55 bg-white/65 shadow-lg backdrop-blur">
-            <Empty
-              description={
-                joinedGroupCount > 0
-                  ? "请选择一个团队进入团队空间"
-                  : "你还未加入任何团队，先创建一个团队开始协作吧"
-              }
-            />
-            {!joinedGroupCount && managedGroups.length > 0 && (
-              <div className="mt-4 text-center text-sm">
-                你已创建团队，可先从上方选择团队进入管理页面
+                ) : (
+                  <Popconfirm
+                    title="确认启用该团队？"
+                    onConfirm={async () => {
+                      await activateGroupApi(selectedGroup.group.groupId);
+                      message.success("团队已启用");
+                      await loadGroups();
+                    }}
+                  >
+                    <Button type="primary">启用团队</Button>
+                  </Popconfirm>
+                )}
+                <Popconfirm
+                  title="确认删除该团队？"
+                  onConfirm={async () => {
+                    await deleteGroupApi(selectedGroup.group.groupId);
+                    message.success("团队已删除");
+                    setSelectedGroup(null);
+                    await loadGroups();
+                  }}
+                >
+                  <Button danger>删除团队</Button>
+                </Popconfirm>
               </div>
-            )}
-          </Card>
-        )}
-      </div>
-
-      <Modal
-        open={createModalOpen}
-        title="创建团队"
-        okText="创建"
-        cancelText="取消"
-        confirmLoading={creating}
-        onCancel={() => setCreateModalOpen(false)}
-        onOk={() => void onCreateGroup()}
-      >
-        <Input
-          value={createName}
-          onChange={(event) => setCreateName(event.target.value)}
-          placeholder="请输入团队名称"
-          maxLength={50}
-        />
-      </Modal>
-    </SpaceBackground>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div 
+          style={{ 
+            padding: 'var(--space-8)',
+            textAlign: 'center',
+            color: 'var(--color-text-tertiary)',
+            backgroundColor: 'var(--color-surface-secondary)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-border-default)',
+          }}
+        >
+          <Empty
+            description={
+              joinedGroupCount > 0
+                ? "请选择一个团队进入团队空间"
+                : "你还未加入任何团队，先创建一个团队开始协作吧"
+            }
+          />
+          {!joinedGroupCount && managedGroups.length > 0 && (
+            <div style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-sm)' }}>
+              你已创建团队，可先从上方选择团队进入管理页面
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
+
+export default TeamSpace;

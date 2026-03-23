@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  Card,
-  Drawer,
-  Empty,
-  Input,
-  Select,
-  Spin,
-  message,
-} from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
+import { Drawer, Empty, Spin, message, Input, Button } from "antd";
 import { pageApi } from "@/apis/publicfile";
 import {
   fetchLikedCountApi,
@@ -30,7 +20,6 @@ import type { CommentResponse } from "@/types/comment/query";
 import type { UserInfoResponse } from "@/types/user/query";
 import { unwrapList } from "@/utils/idtree";
 import { downloadApi } from "@/apis/file";
-import { SpaceBackground } from "../SpaceBackground";
 import { useFilePreview } from "@/hooks/useFilePreview";
 import {
   normalizePost,
@@ -42,6 +31,7 @@ import {
 import { ID_PATTERNS, PAGINATION } from "@/constants";
 import { PostCard } from "./components/PostCard";
 import { CommentList } from "./components/CommentList";
+import { SearchToolbar } from "@/components/SearchToolbar";
 
 const DEFAULT_PAGE_QUERY: PublicFilePageQuery = {
   pageIndex: 1,
@@ -407,72 +397,104 @@ export const PublicSpace = () => {
     }
   };
 
+  const containerStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    gap: 'var(--space-4)',
+  };
+
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 'var(--space-4)',
+    borderBottom: '1px solid var(--color-border-default)',
+  };
+
+  const titleStyle: React.CSSProperties = {
+    fontSize: 'var(--text-xl)',
+    fontWeight: 'var(--font-semibold)',
+    color: 'var(--color-text-primary)',
+    margin: 0,
+  };
+
+  const descStyle: React.CSSProperties = {
+    fontSize: 'var(--text-sm)',
+    color: 'var(--color-text-tertiary)',
+    margin: 'var(--space-2) 0 0 0',
+  };
+
+  const gridStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: 'var(--space-4)',
+  };
+
   return (
-    <SpaceBackground paddingClassName="py-8">
-      <div className="relative mx-auto w-full max-w-6xl px-4">
-        <div className="mb-6 text-center">
-          <h2 className="mpcs-text-strong text-3xl font-semibold">公共空间</h2>
-          <p className="mpcs-text-muted mt-2 text-sm">
+    <div style={containerStyle}>
+      <div style={headerStyle}>
+        <div>
+          <h2 style={titleStyle}>公共空间</h2>
+          <p style={descStyle}>
             浏览全站公开文件，参与点赞与分层评论讨论。
           </p>
         </div>
-
-        <Card className="mb-6 rounded-3xl border border-white/60 bg-white/65 backdrop-blur">
-          <div className="flex flex-col gap-3 md:flex-row">
-            <Input.Search
-              allowClear
-              placeholder="搜索文件标题"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onSearch={() => void loadPosts()}
-              className="flex-1"
-            />
-            <Select<SortValue>
-              value={sortValue}
-              onChange={setSortValue}
-              className="w-40"
-              options={[
-                { label: "最新发布", value: "latest" },
-                { label: "最早发布", value: "oldest" },
-                { label: "最多点赞", value: "hot" },
-              ]}
-            />
-            <Button icon={<ReloadOutlined />} onClick={() => void loadPosts()}>
-              刷新
-            </Button>
-          </div>
-        </Card>
-
-        {loading ? (
-          <div className="text-center">
-            <Spin />
-          </div>
-        ) : posts.length ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {posts.map((post, index) => {
-              const liked = post.postId ? likedPostIds.has(post.postId) : false;
-              const cardKey = post.postId ?? `${post.originalFileId}-${index}`;
-              return (
-                <PostCard
-                  key={cardKey}
-                  post={post}
-                  liked={liked}
-                  publisherInfoMap={publisherInfoMap}
-                  getDisplayName={getPublisherDisplayName}
-                  onLike={() => void onToggleLike(post)}
-                  onComment={() => void openComments(post)}
-                  onPreview={() => openPreview(post.originalFileId, post.title)}
-                  onDownload={() => void downloadFile(post.originalFileId, post.title)}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="rounded-3xl border border-white/60 bg-white/65 shadow-lg backdrop-blur">
-            <Empty description="暂无公共文件" />
-          </Card>
-        )}
       </div>
+
+      <SearchToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearch={() => void loadPosts()}
+        searchPlaceholder="搜索文件标题"
+        sortValue={sortValue}
+        onSortChange={(value) => setSortValue(value as SortValue)}
+        sortOptions={[
+          { label: "最新发布", value: "latest" as const },
+          { label: "最早发布", value: "oldest" as const },
+          { label: "最多点赞", value: "hot" as const },
+        ]}
+        onRefresh={() => void loadPosts()}
+      />
+
+      {loading ? (
+        <div className="flex items-center justify-center" style={{ padding: 'var(--space-8)' }}>
+          <Spin />
+        </div>
+      ) : posts.length ? (
+        <div style={gridStyle}>
+          {posts.map((post, index) => {
+            const liked = post.postId ? likedPostIds.has(post.postId) : false;
+            const cardKey = post.postId ?? `${post.originalFileId}-${index}`;
+            return (
+              <PostCard
+                key={cardKey}
+                post={post}
+                liked={liked}
+                publisherInfoMap={publisherInfoMap}
+                getDisplayName={getPublisherDisplayName}
+                onLike={() => void onToggleLike(post)}
+                onComment={() => void openComments(post)}
+                onPreview={() => openPreview(post.originalFileId, post.title)}
+                onDownload={() => void downloadFile(post.originalFileId, post.title)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div 
+          style={{ 
+            padding: 'var(--space-8)',
+            textAlign: 'center',
+            color: 'var(--color-text-tertiary)',
+            backgroundColor: 'var(--color-surface-secondary)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-border-default)',
+          }}
+        >
+          <Empty description="暂无公共文件" />
+        </div>
+      )}
 
       <Drawer
         width={560}
@@ -523,6 +545,8 @@ export const PublicSpace = () => {
         ) : null}
       </Drawer>
       {previewModal}
-    </SpaceBackground>
+    </div>
   );
 };
+
+export default PublicSpace;

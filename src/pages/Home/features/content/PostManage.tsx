@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Button,
-  Card,
   Dropdown,
   Empty,
   Input,
   List,
   Modal,
-  Select,
   Space,
   Spin,
   Tag,
   Typography,
   message,
 } from "antd";
-import { EditOutlined, ReloadOutlined, RollbackOutlined } from "@ant-design/icons";
+import { EditOutlined, RollbackOutlined } from "@ant-design/icons";
+import { SearchToolbar } from "@/components/SearchToolbar";
 import dayjs from "dayjs";
 import {
   editDescriptionApi,
@@ -26,7 +25,6 @@ import type { PublicFilePageQuery } from "@/types/publicfile/command";
 import type { PublicFileResponse } from "@/types/publicfile/query";
 import { unwrapList } from "@/utils/idtree";
 import { downloadApi } from "@/apis/file";
-import { SpaceBackground } from "./SpaceBackground";
 import { useFilePreview } from "@/hooks/useFilePreview";
 
 const DEFAULT_PAGE_QUERY: PublicFilePageQuery = {
@@ -214,123 +212,151 @@ export const PostManage = () => {
     }
   };
 
+  const containerStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    gap: 'var(--space-4)',
+  };
+
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 'var(--space-4)',
+    borderBottom: '1px solid var(--color-border-default)',
+  };
+
+  const titleStyle: React.CSSProperties = {
+    fontSize: 'var(--text-xl)',
+    fontWeight: 'var(--font-semibold)',
+    color: 'var(--color-text-primary)',
+    margin: 0,
+  };
+
+  const descStyle: React.CSSProperties = {
+    fontSize: 'var(--text-sm)',
+    color: 'var(--color-text-tertiary)',
+    margin: 'var(--space-2) 0 0 0',
+  };
+
   return (
-    <SpaceBackground paddingClassName="py-8">
-      <div className="relative mx-auto w-full max-w-6xl px-4">
-        <div className="mb-6 text-center">
-          <h2 className="mpcs-text-strong text-3xl font-semibold">发布管理</h2>
-          <p className="mpcs-text-muted mt-2 text-sm">
+    <div style={containerStyle}>
+      <div style={headerStyle}>
+        <div>
+          <h2 style={titleStyle}>发布管理</h2>
+          <p style={descStyle}>
             管理你发布到社区的文件，可撤回并编辑标题与简介。
           </p>
         </div>
+      </div>
 
-        <Card className="mb-6 rounded-3xl border border-white/60 bg-white/65 shadow-lg backdrop-blur">
-          <div className="flex flex-col gap-3 md:flex-row">
-            <Input.Search
-              allowClear
-              placeholder="搜索标题 / 文件ID / 帖子ID"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onSearch={() => void loadMyPosts()}
-              className="flex-1"
-            />
-            <Select<SortValue>
-              value={sortValue}
-              onChange={setSortValue}
-              className="w-40"
-              options={[
-                { label: "最新发布", value: "latest" },
-                { label: "最早发布", value: "oldest" },
-                { label: "最多点赞", value: "hot" },
-              ]}
-            />
-            <Button icon={<ReloadOutlined />} onClick={() => void loadMyPosts()}>
-              刷新
-            </Button>
-          </div>
-        </Card>
+      <SearchToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearch={() => void loadMyPosts()}
+        searchPlaceholder="搜索标题 / 文件ID / 帖子ID"
+        sortValue={sortValue}
+        onSortChange={(value) => setSortValue(value as SortValue)}
+        sortOptions={[
+          { label: "最新发布", value: "latest" as const },
+          { label: "最早发布", value: "oldest" as const },
+          { label: "最多点赞", value: "hot" as const },
+        ]}
+        onRefresh={() => void loadMyPosts()}
+      />
 
-        <Card className="rounded-3xl border border-white/60 bg-white/65 shadow-lg backdrop-blur">
-          <Spin spinning={loading}>
-            {posts.length ? (
-              <List
-                itemLayout="vertical"
-                dataSource={posts}
-                renderItem={(post, index) => (
-                  <Dropdown
-                    key={post.postId ?? `${post.originalFileId}-${post.createdAt}-${index}`}
-                    trigger={["contextMenu"]}
-                    menu={{
-                      items: [
-                        {
-                          key: "preview",
-                          label: "预览",
-                          onClick: () => openPreview(post.originalFileId, post.title),
-                        },
-                        {
-                          key: "download",
-                          label: "下载",
-                          onClick: () =>
-                            void downloadFile(post.originalFileId, post.title),
-                        },
-                      ],
-                    }}
-                  >
-                    <List.Item>
-                      <div className="mb-2 flex items-start justify-between gap-3">
-                        <div>
-                          <Typography.Title level={5} className="mb-1">
-                            {post.title}
-                          </Typography.Title>
-                          <Space size={[8, 8]} wrap>
-                            <Tag color="blue">帖子ID: {post.postId ?? "未返回"}</Tag>
-                            <Tag color="geekblue">文件ID: {post.originalFileId}</Tag>
-                            <Tag color="gold">点赞: {post.likeCount}</Tag>
-                            <Tag color="purple">评论: {post.commentCount}</Tag>
-                            <Tag>
-                              发布时间:{" "}
-                              {dayjs(post.createdAt).format("YYYY-MM-DD HH:mm")}
-                            </Tag>
-                          </Space>
-                        </div>
-
-                        <Space>
-                          <Button
-                            icon={<EditOutlined />}
-                            onClick={() => onEditTitle(post)}
-                          >
-                            编辑标题
-                          </Button>
-                          <Button
-                            icon={<EditOutlined />}
-                            onClick={() => onEditDescription(post)}
-                          >
-                            编辑简介
-                          </Button>
-                          <Button
-                            danger
-                            icon={<RollbackOutlined />}
-                            onClick={() => onWithdraw(post)}
-                          >
-                            撤回
-                          </Button>
+      <div 
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          backgroundColor: 'var(--color-surface-secondary)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--color-border-default)',
+        }}
+      >
+        <Spin spinning={loading}>
+          {posts.length ? (
+            <List
+              style={{ padding: 'var(--space-4)' }}
+              itemLayout="vertical"
+              dataSource={posts}
+              renderItem={(post, index) => (
+                <Dropdown
+                  key={post.postId ?? `${post.originalFileId}-${post.createdAt}-${index}`}
+                  trigger={["contextMenu"]}
+                  menu={{
+                    items: [
+                      {
+                        key: "preview",
+                        label: "预览",
+                        onClick: () => openPreview(post.originalFileId, post.title),
+                      },
+                      {
+                        key: "download",
+                        label: "下载",
+                        onClick: () =>
+                          void downloadFile(post.originalFileId, post.title),
+                      },
+                    ],
+                  }}
+                >
+                  <List.Item>
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <div>
+                        <Typography.Title level={5} className="mb-1">
+                          {post.title}
+                        </Typography.Title>
+                        <Space size={[8, 8]} wrap>
+                          <Tag color="blue">帖子ID: {post.postId ?? "未返回"}</Tag>
+                          <Tag color="geekblue">文件ID: {post.originalFileId}</Tag>
+                          <Tag color="gold">点赞: {post.likeCount}</Tag>
+                          <Tag color="purple">评论: {post.commentCount}</Tag>
+                          <Tag>
+                            发布时间:{" "}
+                            {dayjs(post.createdAt).format("YYYY-MM-DD HH:mm")}
+                          </Tag>
                         </Space>
                       </div>
 
-                      <Typography.Paragraph className="mb-0 whitespace-pre-wrap">
-                        {post.description || "暂无简介"}
-                      </Typography.Paragraph>
-                    </List.Item>
-                  </Dropdown>
-                )}
-              />
-            ) : (
-              <Empty description="你还没有发布过文件" />
-            )}
-          </Spin>
-        </Card>
+                      <Space>
+                        <Button
+                          icon={<EditOutlined />}
+                          onClick={() => onEditTitle(post)}
+                        >
+                          编辑标题
+                        </Button>
+                        <Button
+                          icon={<EditOutlined />}
+                          onClick={() => onEditDescription(post)}
+                        >
+                          编辑简介
+                        </Button>
+                        <Button
+                          danger
+                          icon={<RollbackOutlined />}
+                          onClick={() => onWithdraw(post)}
+                        >
+                          撤回
+                        </Button>
+                      </Space>
+                    </div>
+
+                    <Typography.Paragraph className="mb-0 whitespace-pre-wrap">
+                      {post.description || "暂无简介"}
+                    </Typography.Paragraph>
+                  </List.Item>
+                </Dropdown>
+              )}
+            />
+          ) : (
+            <Empty description="你还没有发布过文件" />
+          )}
+        </Spin>
       </div>
       {previewModal}
-    </SpaceBackground>
+    </div>
   );
 };
+
+export default PostManage;

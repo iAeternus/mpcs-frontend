@@ -7,6 +7,7 @@ import store from "@/store";
 import { App as AntdApp } from "antd";
 import { App } from "./App";
 import "./main.css";
+import "./styles/tokens.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
