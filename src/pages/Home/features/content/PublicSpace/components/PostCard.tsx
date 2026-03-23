@@ -1,4 +1,5 @@
 import { Button, Card, Descriptions, Popover, Tag, Typography } from "antd";
+import dayjs from "dayjs";
 import type { UserInfoResponse } from "@/types/user/query";
 
 interface PublisherTagProps {
@@ -84,7 +85,7 @@ export const PostCard = ({
       </Typography.Paragraph>
 
       <div className="mpcs-text-muted mb-3 text-xs">
-        发布于 {post.createdAt}
+        发布于 {dayjs(post.createdAt).format("YYYY-MM-DD HH:mm")}
       </div>
 
       <div className="flex items-center justify-between">

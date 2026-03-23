@@ -20,7 +20,7 @@ import type { GroupPermission } from "../types";
 import { FolderTree } from "./FolderTree";
 import { MemberList } from "./MemberList";
 import { MemberModal, RemoveMemberModal } from "./MemberModals";
-import { parseUserIds, validateUserIds, getPolicyHint } from "../utils/teamUtils";
+import { parseUserIds, validateUserIds } from "../utils/teamUtils";
 import {
   addGrantApi,
   addGrantsApi,
@@ -264,29 +264,20 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
     }
   };
 
+  const panelStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-4)',
+  };
+
   return (
-    <div className="flex flex-col gap-6">
-      <Card className="rounded-3xl border border-white/55 bg-white/65 shadow-lg backdrop-blur">
-        <div className="flex flex-wrap items-center gap-2">
-          <Tag color={isManager ? "gold" : "blue"}>
-            {isManager ? "管理员视角" : "成员视角"}
-          </Tag>
-          <Tag>{group.inheritancePolicy}</Tag>
-          <span className="mpcs-text-muted text-sm">
-            {getPolicyHint(group.inheritancePolicy)}
-          </span>
-        </div>
-        {(!group.active || !isManager) && (
-          <div className="mt-3">
-            {!group.active && (
-              <Alert type="warning" showIcon message="该团队已停用，部分操作已受限" />
-            )}
-            {!isManager && (
-              <Alert type="info" showIcon message="当前为普通成员，仅可查看成员列表与团队目录。" className="mt-2" />
-            )}
-          </div>
-        )}
-      </Card>
+    <div style={panelStyle}>
+      {!group.active && (
+        <Alert type="warning" showIcon message="该团队已停用，部分操作已受限" />
+      )}
+      {!isManager && !group.active && (
+        <Alert type="info" showIcon message="当前为普通成员，仅可查看成员列表与团队目录。" />
+      )}
 
       <FolderTree customId={safeCustomId} />
 
