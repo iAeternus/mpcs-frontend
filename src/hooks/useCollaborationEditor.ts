@@ -300,24 +300,27 @@ export const useCollaborationEditor = ({
         }
 
         const history = await getOperationHistoryApi(sess.sessionId, 0);
+        
+        // Step 1: Always fetch file content first
         let initialContent = "";
+        try {
+          const fileBlob = await fetchFileContentForCollabApi(fileId);
+          initialContent = await fileBlob.text();
+        } catch {
+          initialContent = "";
+        }
+        
+        // Step 2: Apply operations on top of file content
         if (history.operations && history.operations.length > 0) {
-          initialContent = history.operations
-            .sort((a, b) => a.clientVersion - b.clientVersion)
-            .reduce((acc, op) => {
-              if (op.type === "INSERT" && op.content) {
-                return acc + op.content;
-              } else if (op.type === "DELETE" && op.length) {
-                return acc.slice(0, -op.length);
-              }
-              return acc;
-            }, "");
-        } else {
-          try {
-            const fileBlob = await fetchFileContentForCollabApi(fileId);
-            initialContent = await fileBlob.text();
-          } catch {
-            initialContent = "";
+          const sortedOps = [...history.operations].sort((a, b) => a.clientVersion - b.clientVersion);
+          for (const op of sortedOps) {
+            if (op.type === "INSERT" && op.content !== undefined) {
+              const pos = Math.min(op.position, initialContent.length);
+              initialContent = initialContent.slice(0, pos) + op.content + initialContent.slice(pos);
+            } else if (op.type === "DELETE" && op.length) {
+              const pos = Math.min(op.position, initialContent.length);
+              initialContent = initialContent.slice(0, pos) + initialContent.slice(pos + op.length);
+            }
           }
         }
 
