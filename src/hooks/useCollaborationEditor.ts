@@ -73,7 +73,7 @@ export const useCollaborationEditor = ({
 
   const getWebSocketUrl = useCallback((sessionId: string) => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsHost = import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082`;
+    const wsHost = import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082/api/v1.0`;
     const encodedUsername = encodeURIComponent(usernameRef.current);
     return `${protocol}//${wsHost}/ws/collaboration/${sessionId}?userId=${userIdRef.current}&username=${encodedUsername}`;
   }, []);
@@ -128,7 +128,7 @@ export const useCollaborationEditor = ({
     if (msgType === "operation_ack") {
       const ack = data as unknown as OperationAckMessage;
       if (ack.success) {
-        setCurrentVersionRef.current(ack.serverVersion);
+        setCurrentVersionRef.current(ack.version);
         pendingOpsRef.current = [];
       }
     } else if (msgType === "session_state") {
@@ -347,10 +347,6 @@ export const useCollaborationEditor = ({
     };
   }, [fileId, documentTitle, connectWebSocket]);
 
-  const save = useCallback(async () => {
-    // Handled in component
-  }, []);
-
   return {
     loading,
     session,
@@ -361,7 +357,6 @@ export const useCollaborationEditor = ({
     connected,
     saved,
     markSaved,
-    save,
     error,
   };
 };

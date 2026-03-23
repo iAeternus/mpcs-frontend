@@ -24,6 +24,7 @@ import { HierarchyDetailPane } from "./HierarchyDetailPane";
 import { HierarchyTreePane } from "./HierarchyTreePane";
 import { useUploadHandler } from "./components/useUploadHandler";
 import { useUploadProgress } from "./UploadProgressModal";
+import { isCollaborationSupported } from "@/types/file/enums/fileCategory";
 
 interface FolderHierarchyProps {
   customId: string;
@@ -366,16 +367,20 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
           message.success("下载成功");
         },
       },
-      {
-        key: "collab-edit",
-        label: "协同编辑",
-        onClick: async () => {
-          const parentFolderId = file.parentId || rootFolderId;
-          navigate(
-            `/home/collaboration?fileId=${encodeURIComponent(file.id)}&title=${encodeURIComponent(file.filename)}&parentId=${encodeURIComponent(parentFolderId || "")}`
-          );
-        },
-      },
+      ...(isCollaborationSupported(file.category)
+        ? [
+            {
+              key: "collab-edit",
+              label: "协同编辑",
+              onClick: async () => {
+                const parentFolderId = file.parentId || rootFolderId;
+                navigate(
+                  `/home/collaboration?fileId=${encodeURIComponent(file.id)}&title=${encodeURIComponent(file.filename)}&parentId=${encodeURIComponent(parentFolderId || "")}`
+                );
+              },
+            },
+          ]
+        : []),
       {
         key: "post",
         label: "发布到社区",
