@@ -57,6 +57,8 @@ export const useCollaborationEditor = ({
   const [error, setError] = useState<string | null>(null);
 
   const pendingOpsRef = useRef<TextOperation[]>([]);
+  const pendingOpRef = useRef<TextOperation | null>(null);
+  const awaitingAckRef = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
   const userIdRef = useRef<string>("current-user");
   const usernameRef = useRef<string>("User");
@@ -129,7 +131,23 @@ export const useCollaborationEditor = ({
       const ack = data as unknown as OperationAckMessage;
       if (ack.success) {
         setCurrentVersionRef.current(ack.version);
-        pendingOpsRef.current = [];
+        pendingOpRef.current = null;
+        awaitingAckRef.current = false;
+        
+        // 如果有待处理的操作，继续发送
+        if (pendingOpsRef.current.length > 0) {
+          const nextOp = pendingOpsRef.current.shift()!;
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            awaitingAckRef.current = true;
+            wsRef.current.send(
+              JSON.stringify({
+                type: "operation",
+                sessionId: sessionIdRef.current,
+                operation: nextOp,
+              } as OperationMessage),
+            );
+          }
+        }
       }
     } else if (msgType === "session_state") {
       if (data.activeUsers) {
@@ -155,6 +173,7 @@ export const useCollaborationEditor = ({
       ws.onopen = () => {
         wsConnectedRef.current = true;
         setConnected(true);
+        sessionIdRef.current = sessionId;
       };
 
       ws.onmessage = (event) => {
@@ -181,6 +200,15 @@ export const useCollaborationEditor = ({
   const sendOperation = useCallback(
     (operation: TextOperation, sid: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // 如果正在等待 ack，将操作加入队列
+        if (awaitingAckRef.current) {
+          pendingOpsRef.current.push(operation);
+          return;
+        }
+        
+        // 标记正在等待 ack
+        awaitingAckRef.current = true;
+        
         wsRef.current.send(
           JSON.stringify({
             type: "operation",
