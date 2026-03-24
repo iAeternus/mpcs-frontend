@@ -24,7 +24,11 @@ import {
   renewLockApi,
 } from "@/apis/collaboration";
 import { fetchMyProfileApi } from "@/apis/user";
-import { applyOperation, computeTextOperations, rebaseRemoteOperation } from "@/utils/collaboration-ot";
+import {
+  applyOperation,
+  computeTextOperations,
+  rebaseRemoteOperation,
+} from "@/utils/collaboration-ot";
 
 interface UseCollaborationEditorOptions {
   fileId: string;
@@ -57,7 +61,11 @@ function isOperationMessage(data: unknown): data is OperationMessage {
   }
 
   const candidate = data as { type?: unknown; operation?: unknown };
-  return candidate.type === "operation" && typeof candidate.operation === "object" && candidate.operation !== null;
+  return (
+    candidate.type === "operation" &&
+    typeof candidate.operation === "object" &&
+    candidate.operation !== null
+  );
 }
 
 function isLockStateMessage(data: unknown): data is LockStateMessage {
@@ -116,7 +124,8 @@ export const useCollaborationEditor = ({
 
   const getWebSocketUrl = useCallback((currentSessionId: string) => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsHost = import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082`;
+    const wsHost =
+      import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082`;
     const encodedUsername = encodeURIComponent(usernameRef.current);
     return `${protocol}//${wsHost}/api/v1.0/ws/collaboration/${currentSessionId}?userId=${userIdRef.current}&username=${encodedUsername}`;
   }, []);
@@ -184,8 +193,14 @@ export const useCollaborationEditor = ({
         return;
       }
 
-      const localOutstanding = [...inFlightOpsRef.current, ...pendingOpsRef.current];
-      const { remoteOperation, localOperations } = rebaseRemoteOperation(incomingOperation, localOutstanding);
+      const localOutstanding = [
+        ...inFlightOpsRef.current,
+        ...pendingOpsRef.current,
+      ];
+      const { remoteOperation, localOperations } = rebaseRemoteOperation(
+        incomingOperation,
+        localOutstanding,
+      );
 
       const inFlightCount = inFlightOpsRef.current.length;
       inFlightOpsRef.current = localOperations.slice(0, inFlightCount);
@@ -234,7 +249,10 @@ export const useCollaborationEditor = ({
 
   const connectWebSocket = useCallback(
     (currentSessionId: string) => {
-      if (wsConnectedRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
+      if (
+        wsConnectedRef.current ||
+        wsRef.current?.readyState === WebSocket.OPEN
+      ) {
         return;
       }
 
@@ -250,7 +268,9 @@ export const useCollaborationEditor = ({
 
       ws.onmessage = (event) => {
         try {
-          handleWebSocketMessage(JSON.parse(event.data) as Record<string, unknown>);
+          handleWebSocketMessage(
+            JSON.parse(event.data) as Record<string, unknown>,
+          );
         } catch {
           // Ignore malformed frames.
         }
@@ -311,7 +331,10 @@ export const useCollaborationEditor = ({
       end,
     });
 
-    setLocks((previous) => [...previous.filter((item) => item.userId !== userIdRef.current), lock]);
+    setLocks((previous) => [
+      ...previous.filter((item) => item.userId !== userIdRef.current),
+      lock,
+    ]);
     return lock;
   }, []);
 
@@ -322,7 +345,9 @@ export const useCollaborationEditor = ({
     }
 
     const lock = await renewLockApi(currentSession.sessionId, lockId);
-    setLocks((previous) => previous.map((item) => (item.lockId === lock.lockId ? lock : item)));
+    setLocks((previous) =>
+      previous.map((item) => (item.lockId === lock.lockId ? lock : item)),
+    );
     return lock;
   }, []);
 
@@ -370,7 +395,11 @@ export const useCollaborationEditor = ({
         let currentSession: SessionInfoResponse | null = null;
         const maxRetries = 3;
 
-        for (let attempt = 0; attempt < maxRetries && !currentSession; attempt += 1) {
+        for (
+          let attempt = 0;
+          attempt < maxRetries && !currentSession;
+          attempt += 1
+        ) {
           try {
             currentSession = await getSessionByDocumentApi(fileId);
           } catch (err) {
@@ -385,7 +414,9 @@ export const useCollaborationEditor = ({
                   ttlHours: 24,
                 });
               } catch (createErr) {
-                const createError = createErr as { response?: { status?: number } };
+                const createError = createErr as {
+                  response?: { status?: number };
+                };
                 const createStatus = createError.response?.status;
                 if (createStatus === 409 || createStatus === 500) {
                   currentSession = await getSessionByDocumentApi(fileId);
@@ -396,7 +427,10 @@ export const useCollaborationEditor = ({
                   throw createErr;
                 }
               }
-            } else if ((status === 409 || status === 500) && attempt < maxRetries - 1) {
+            } else if (
+              (status === 409 || status === 500) &&
+              attempt < maxRetries - 1
+            ) {
               await new Promise((resolve) => setTimeout(resolve, 500));
             } else if (attempt < maxRetries - 1) {
               await new Promise((resolve) => setTimeout(resolve, 500));
@@ -434,7 +468,10 @@ export const useCollaborationEditor = ({
         }
 
         const baseVersion = currentSession.baseVersion || 0;
-        const history: OperationHistoryResponse = await getOperationHistoryApi(currentSession.sessionId, baseVersion);
+        const history: OperationHistoryResponse = await getOperationHistoryApi(
+          currentSession.sessionId,
+          baseVersion,
+        );
 
         for (const operation of history.operations || []) {
           initialContent = applyOperation(initialContent, operation);
