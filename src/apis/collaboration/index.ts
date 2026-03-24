@@ -1,9 +1,13 @@
-/**
- * 协同编辑模块 API
- */
-import type {
+﻿import type {
+  AcquireEditingLockCommand,
+  CreateRevisionCommand,
   CreateSessionCommand,
+  EditingLockResponse,
+  EditingLockStateResponse,
   OperationHistoryResponse,
+  RevisionDetailResponse,
+  RevisionDiffResponse,
+  RevisionSummaryResponse,
   SessionInfoResponse,
   SubmitOperationCommand,
   UpdateCursorCommand,
@@ -12,7 +16,6 @@ import { http } from "@/utils/http";
 
 const COLLAB_BASE = "/collaboration";
 
-/** 创建协同会话 */
 export const createSessionApi = async (
   cmd: CreateSessionCommand,
 ): Promise<SessionInfoResponse> => {
@@ -24,7 +27,6 @@ export const createSessionApi = async (
   return res.data;
 };
 
-/** 获取会话信息 */
 export const getSessionInfoApi = async (
   sessionId: string,
 ): Promise<SessionInfoResponse> => {
@@ -35,7 +37,6 @@ export const getSessionInfoApi = async (
   return res.data;
 };
 
-/** 通过文档ID获取会话 */
 export const getSessionByDocumentApi = async (
   documentId: string,
 ): Promise<SessionInfoResponse> => {
@@ -46,7 +47,6 @@ export const getSessionByDocumentApi = async (
   return res.data;
 };
 
-/** 加入协同会话 */
 export const joinSessionApi = async (
   sessionId: string,
 ): Promise<SessionInfoResponse> => {
@@ -57,7 +57,6 @@ export const joinSessionApi = async (
   return res.data;
 };
 
-/** 离开协同会话 */
 export const leaveSessionApi = async (sessionId: string): Promise<void> => {
   await http.request({
     url: `${COLLAB_BASE}/sessions/${sessionId}/leave`,
@@ -65,7 +64,6 @@ export const leaveSessionApi = async (sessionId: string): Promise<void> => {
   });
 };
 
-/** 删除协同会话 */
 export const deleteSessionApi = async (sessionId: string): Promise<void> => {
   await http.request({
     url: `${COLLAB_BASE}/sessions/${sessionId}`,
@@ -73,7 +71,6 @@ export const deleteSessionApi = async (sessionId: string): Promise<void> => {
   });
 };
 
-/** 提交操作 */
 export const submitOperationApi = async (
   cmd: SubmitOperationCommand,
 ): Promise<SessionInfoResponse> => {
@@ -85,7 +82,6 @@ export const submitOperationApi = async (
   return res.data;
 };
 
-/** 更新光标位置 */
 export const updateCursorApi = async (
   cmd: UpdateCursorCommand,
 ): Promise<SessionInfoResponse> => {
@@ -97,7 +93,6 @@ export const updateCursorApi = async (
   return res.data;
 };
 
-/** 获取操作历史 */
 export const getOperationHistoryApi = async (
   sessionId: string,
   fromVersion: number = 0,
@@ -110,7 +105,6 @@ export const getOperationHistoryApi = async (
   return res.data;
 };
 
-/** 获取文件内容用于协同编辑 */
 export const fetchFileContentForCollabApi = async (
   fileId: string,
 ): Promise<Blob> => {
@@ -122,7 +116,6 @@ export const fetchFileContentForCollabApi = async (
   return res.data;
 };
 
-/** 更新基准版本 */
 export const updateBaseVersionApi = async (
   sessionId: string,
   baseVersion: number,
@@ -135,7 +128,6 @@ export const updateBaseVersionApi = async (
   return res.data;
 };
 
-/** 保存协同编辑后的文件内容 */
 export const saveFileContentApi = async (
   fileId: string,
   parentId: string,
@@ -151,5 +143,94 @@ export const saveFileContentApi = async (
     url: `/files/${fileId}/collab-save`,
     method: "PUT",
     data: formData,
+  });
+};
+
+export const createRevisionApi = async (
+  documentId: string,
+  cmd: CreateRevisionCommand,
+): Promise<RevisionDetailResponse> => {
+  const res = await http.request<RevisionDetailResponse>({
+    url: `${COLLAB_BASE}/documents/${documentId}/revisions`,
+    method: "POST",
+    data: cmd,
+  });
+  return res.data;
+};
+
+export const listRevisionsApi = async (
+  documentId: string,
+): Promise<RevisionSummaryResponse[]> => {
+  const res = await http.request<RevisionSummaryResponse[]>({
+    url: `${COLLAB_BASE}/documents/${documentId}/revisions`,
+    method: "GET",
+  });
+  return res.data;
+};
+
+export const getRevisionApi = async (
+  documentId: string,
+  revisionId: string,
+): Promise<RevisionDetailResponse> => {
+  const res = await http.request<RevisionDetailResponse>({
+    url: `${COLLAB_BASE}/documents/${documentId}/revisions/${revisionId}`,
+    method: "GET",
+  });
+  return res.data;
+};
+
+export const getRevisionDiffApi = async (
+  documentId: string,
+  revisionId: string,
+  compareToRevisionId?: string,
+): Promise<RevisionDiffResponse> => {
+  const res = await http.request<RevisionDiffResponse>({
+    url: `${COLLAB_BASE}/documents/${documentId}/revisions/${revisionId}/diff`,
+    method: "GET",
+    params: compareToRevisionId ? { compareToRevisionId } : undefined,
+  });
+  return res.data;
+};
+
+export const listLocksApi = async (
+  sessionId: string,
+): Promise<EditingLockStateResponse> => {
+  const res = await http.request<EditingLockStateResponse>({
+    url: `${COLLAB_BASE}/sessions/${sessionId}/locks`,
+    method: "GET",
+  });
+  return res.data;
+};
+
+export const acquireLockApi = async (
+  sessionId: string,
+  cmd: AcquireEditingLockCommand,
+): Promise<EditingLockResponse> => {
+  const res = await http.request<EditingLockResponse>({
+    url: `${COLLAB_BASE}/sessions/${sessionId}/locks`,
+    method: "POST",
+    data: cmd,
+  });
+  return res.data;
+};
+
+export const renewLockApi = async (
+  sessionId: string,
+  lockId: string,
+): Promise<EditingLockResponse> => {
+  const res = await http.request<EditingLockResponse>({
+    url: `${COLLAB_BASE}/sessions/${sessionId}/locks/${lockId}/renew`,
+    method: "POST",
+  });
+  return res.data;
+};
+
+export const releaseLockApi = async (
+  sessionId: string,
+  lockId: string,
+): Promise<void> => {
+  await http.request({
+    url: `${COLLAB_BASE}/sessions/${sessionId}/locks/${lockId}`,
+    method: "DELETE",
   });
 };

@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { message } from "antd";
 import type {
   CollabUser,
+  EditingLockResponse,
+  LockStateMessage,
   OperationAckMessage,
   OperationHistoryResponse,
   OperationMessage,
@@ -10,12 +12,16 @@ import type {
   TextOperation,
 } from "@/types/collaboration";
 import {
+  acquireLockApi,
   createSessionApi,
   fetchFileContentForCollabApi,
   getOperationHistoryApi,
   getSessionByDocumentApi,
   joinSessionApi,
   leaveSessionApi,
+  listLocksApi,
+  releaseLockApi,
+  renewLockApi,
 } from "@/apis/collaboration";
 import { fetchMyProfileApi } from "@/apis/user";
 import { applyOperation, computeTextOperations, rebaseRemoteOperation } from "@/utils/collaboration-ot";
@@ -37,6 +43,12 @@ interface UseCollaborationEditorReturn {
   saved: boolean;
   markSaved: () => void;
   error: string | null;
+  currentUserId: string;
+  currentUsername: string;
+  locks: EditingLockResponse[];
+  acquireLock: (start: number, end: number) => Promise<EditingLockResponse>;
+  renewLock: (lockId: string) => Promise<EditingLockResponse>;
+  releaseLock: (lockId: string) => Promise<void>;
 }
 
 function isOperationMessage(data: unknown): data is OperationMessage {
@@ -46,6 +58,15 @@ function isOperationMessage(data: unknown): data is OperationMessage {
 
   const candidate = data as { type?: unknown; operation?: unknown };
   return candidate.type === "operation" && typeof candidate.operation === "object" && candidate.operation !== null;
+}
+
+function isLockStateMessage(data: unknown): data is LockStateMessage {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  const candidate = data as { type?: unknown; locks?: unknown };
+  return candidate.type === "lock_state" && Array.isArray(candidate.locks);
 }
 
 export const useCollaborationEditor = ({
@@ -67,6 +88,7 @@ export const useCollaborationEditor = ({
   const pendingOpsRef = useRef<TextOperation[]>([]);
   const inFlightOpsRef = useRef<TextOperation[]>([]);
   const awaitingAckRef = useRef(false);
+  const releasingLockIdsRef = useRef<Set<string>>(new Set());
 
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<SessionInfoResponse | null>(null);
@@ -76,6 +98,7 @@ export const useCollaborationEditor = ({
   const [connected, setConnected] = useState(false);
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locks, setLocks] = useState<EditingLockResponse[]>([]);
 
   contentRef.current = content;
   sessionRef.current = session;
@@ -199,6 +222,11 @@ export const useCollaborationEditor = ({
 
       if (msgType === "operation") {
         handleRemoteOperation(data);
+        return;
+      }
+
+      if (isLockStateMessage(data)) {
+        setLocks(data.locks);
       }
     },
     [handleOperationAck, handleRemoteOperation],
@@ -224,7 +252,7 @@ export const useCollaborationEditor = ({
         try {
           handleWebSocketMessage(JSON.parse(event.data) as Record<string, unknown>);
         } catch {
-          // Ignore malformed frames from diagnostics or proxies.
+          // Ignore malformed frames.
         }
       };
 
@@ -234,7 +262,7 @@ export const useCollaborationEditor = ({
       };
 
       ws.onerror = () => {
-        setError("WebSocket连接失败");
+        setError("WebSocket connection failed");
       };
     },
     [flushPendingOperations, getWebSocketUrl, handleWebSocketMessage],
@@ -271,6 +299,55 @@ export const useCollaborationEditor = ({
     setSaved(true);
   }, []);
 
+  const acquireLock = useCallback(async (start: number, end: number) => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) {
+      throw new Error("Session is not ready");
+    }
+
+    const lock = await acquireLockApi(currentSession.sessionId, {
+      documentId: currentSession.documentId,
+      start,
+      end,
+    });
+
+    setLocks((previous) => [...previous.filter((item) => item.userId !== userIdRef.current), lock]);
+    return lock;
+  }, []);
+
+  const renewLock = useCallback(async (lockId: string) => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) {
+      throw new Error("Session is not ready");
+    }
+
+    const lock = await renewLockApi(currentSession.sessionId, lockId);
+    setLocks((previous) => previous.map((item) => (item.lockId === lock.lockId ? lock : item)));
+    return lock;
+  }, []);
+
+  const releaseLock = useCallback(async (lockId: string) => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) {
+      return;
+    }
+
+    if (releasingLockIdsRef.current.has(lockId)) {
+      return;
+    }
+
+    releasingLockIdsRef.current.add(lockId);
+
+    try {
+      await releaseLockApi(currentSession.sessionId, lockId);
+      setLocks((previous) => previous.filter((item) => item.lockId !== lockId));
+    } catch {
+      setLocks((previous) => previous.filter((item) => item.lockId !== lockId));
+    } finally {
+      releasingLockIdsRef.current.delete(lockId);
+    }
+  }, []);
+
   useEffect(() => {
     if (initializedRef.current) {
       return;
@@ -293,7 +370,7 @@ export const useCollaborationEditor = ({
         let currentSession: SessionInfoResponse | null = null;
         const maxRetries = 3;
 
-        for (let attempt = 0; attempt < maxRetries && !currentSession; attempt++) {
+        for (let attempt = 0; attempt < maxRetries && !currentSession; attempt += 1) {
           try {
             currentSession = await getSessionByDocumentApi(fileId);
           } catch (err) {
@@ -363,13 +440,20 @@ export const useCollaborationEditor = ({
           initialContent = applyOperation(initialContent, operation);
         }
 
+        try {
+          const initialLocks = await listLocksApi(currentSession.sessionId);
+          setLocks(initialLocks.locks || []);
+        } catch {
+          setLocks([]);
+        }
+
         savedContentRef.current = initialContent;
         updateContent(initialContent);
         setLoading(false);
         connectWebSocket(currentSession.sessionId);
       } catch {
-        setError("初始化协同会话失败");
-        message.error("初始化协同会话失败");
+        setError("Failed to initialize collaboration session");
+        message.error("Failed to initialize collaboration session");
         setLoading(false);
       }
     };
@@ -381,6 +465,7 @@ export const useCollaborationEditor = ({
       awaitingAckRef.current = false;
       pendingOpsRef.current = [];
       inFlightOpsRef.current = [];
+      setLocks([]);
 
       if (wsRef.current) {
         wsRef.current.close();
@@ -407,5 +492,11 @@ export const useCollaborationEditor = ({
     saved,
     markSaved,
     error,
+    currentUserId: userIdRef.current,
+    currentUsername: usernameRef.current,
+    locks,
+    acquireLock,
+    renewLock,
+    releaseLock,
   };
 };

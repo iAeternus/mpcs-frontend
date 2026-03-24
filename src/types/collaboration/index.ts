@@ -1,8 +1,4 @@
-/**
- * 协同编辑模块类型定义
- */
-
-export interface SessionInfoResponse {
+﻿export interface SessionInfoResponse {
   type?: string;
   sessionId: string;
   documentId: string;
@@ -80,6 +76,72 @@ export interface UpdateCursorCommand {
   selectionEnd?: number;
 }
 
+export interface CreateRevisionCommand {
+  sessionId: string;
+  documentId: string;
+  documentTitle: string;
+  baseVersion: number;
+  content: string;
+  changeSummary?: string;
+  source: "MANUAL_SAVE" | "AUTO_SAVE" | "RESTORE";
+}
+
+export interface RevisionSummaryResponse {
+  revisionId: string;
+  documentId: string;
+  revisionNo: number;
+  baseVersion: number;
+  changeSummary: string;
+  source: string;
+  createdBy: string;
+  creator: string;
+  createdAt: string;
+}
+
+export interface RevisionDetailResponse {
+  revisionId: string;
+  sessionId: string;
+  documentId: string;
+  documentTitle: string;
+  revisionNo: number;
+  baseVersion: number;
+  contentSnapshot: string;
+  changeSummary: string;
+  source: string;
+  createdBy: string;
+  creator: string;
+  createdAt: string;
+}
+
+export interface RevisionDiffResponse {
+  revisionId: string;
+  compareToRevisionId?: string;
+  unifiedDiffLines: string[];
+  leftContent: string;
+  rightContent: string;
+}
+
+export interface AcquireEditingLockCommand {
+  documentId: string;
+  start: number;
+  end: number;
+}
+
+export interface EditingLockResponse {
+  lockId: string;
+  userId: string;
+  username: string;
+  start: number;
+  end: number;
+  acquiredAt: string;
+  expiresAt: string;
+}
+
+export interface EditingLockStateResponse {
+  sessionId: string;
+  locks: EditingLockResponse[];
+}
+
 export interface OperationMessage {
   type: "operation";
   sessionId: string;
@@ -108,3 +170,16 @@ export interface OperationAckMessage {
   success: boolean;
   errorMessage?: string;
 }
+
+export interface LockStateMessage {
+  type: "lock_state";
+  sessionId: string;
+  locks: EditingLockResponse[];
+}
+
+export type CollaborationSocketMessage =
+  | OperationMessage
+  | CursorMessage
+  | SessionStateMessage
+  | OperationAckMessage
+  | LockStateMessage;
