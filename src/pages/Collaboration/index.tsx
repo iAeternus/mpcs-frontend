@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Alert,
   Avatar,
   Button,
   Card,
@@ -176,6 +177,7 @@ const CollaborationPage = () => {
   const [selectedRevision, setSelectedRevision] = useState<RevisionDetailResponse | null>(null);
   const [revisionDiff, setRevisionDiff] = useState<RevisionDiffResponse | null>(null);
   const [activeLock, setActiveLock] = useState<EditingLockResponse | null>(null);
+  const [lockNotice, setLockNotice] = useState<string | null>(null);
 
   const selectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blockedLockMessageRef = useRef<{ lockId: string; at: number } | null>(null);
@@ -221,6 +223,12 @@ const CollaborationPage = () => {
     () => diffRows.filter((row) => row.type !== "context").length,
     [diffRows],
   );
+
+  useEffect(() => {
+    if (remoteLocks.length === 0) {
+      setLockNotice(null);
+    }
+  }, [remoteLocks.length]);
 
   const loadRevisionDetail = useCallback(
     async (revisionId: string) => {
@@ -294,6 +302,8 @@ const CollaborationPage = () => {
       }
 
       markSaved();
+      await releaseActiveLock();
+      setLockNotice(null);
       setLastSaved(new Date());
       if (revisionDrawerOpen) {
         await loadRevisions();
@@ -331,15 +341,22 @@ const CollaborationPage = () => {
         return;
       }
 
+      if (activeLock) {
+        const previousLockId = activeLock.lockId;
+        setActiveLock(null);
+        await releaseLock(previousLockId);
+      }
+
       try {
         const lock = await acquireLock(range.start, range.end);
         setActiveLock(lock);
+        setLockNotice(null);
       } catch (lockError) {
-        const errorMessage = getErrorMessage(lockError, "该位置正在被其他用户编辑");
-        message.warning(errorMessage);
+        const errorMessage = getErrorMessage(lockError, "该位置正在由其他用户编辑");
+        setLockNotice(errorMessage);
       }
     },
-    [acquireLock, activeLock, session],
+    [acquireLock, activeLock, releaseLock, session],
   );
 
   const handleSelectionChange = useCallback(
@@ -366,7 +383,7 @@ const CollaborationPage = () => {
     }
 
     blockedLockMessageRef.current = { lockId: lock.lockId, at: now };
-    message.warning(`${lock.username} 正在编辑该位置`);
+    setLockNotice(`${lock.username} 正在编辑该区域`);
   }, []);
 
   useEffect(() => {
@@ -588,6 +605,12 @@ const CollaborationPage = () => {
         </span>
       </div>
 
+      {lockNotice && (
+        <div style={{ padding: '8px 16px', backgroundColor: 'var(--color-surface-secondary)', borderBottom: '1px solid var(--color-border-default)' }}>
+          <Alert type="warning" showIcon banner message={lockNotice} />
+        </div>
+      )}
+
       <div style={editorContainerStyle}>
         {markdownMode === "preview" ? (
           <div style={{ ...previewPaneStyle, flex: 1 }}>
@@ -604,9 +627,6 @@ const CollaborationPage = () => {
                 currentUserId={currentUserId}
                 locks={remoteLocks}
                 onSelectionChange={handleSelectionChange}
-                onBlur={() => {
-                  void releaseActiveLock();
-                }}
                 onBlockedEdit={handleBlockedEdit}
               />
             </div>
@@ -621,9 +641,6 @@ const CollaborationPage = () => {
                   currentUserId={currentUserId}
                   locks={remoteLocks}
                   onSelectionChange={handleSelectionChange}
-                  onBlur={() => {
-                    void releaseActiveLock();
-                  }}
                   onBlockedEdit={handleBlockedEdit}
                 />
               </div>
