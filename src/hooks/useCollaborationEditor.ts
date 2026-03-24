@@ -1,25 +1,24 @@
-/**
- * 协同编辑页面 Hook
- * 封装协同编辑状态管理和WebSocket通信
- */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { message } from "antd";
 import type {
   CollabUser,
   OperationAckMessage,
+  OperationHistoryResponse,
   OperationMessage,
   SessionInfoResponse,
+  SessionStateMessage,
   TextOperation,
 } from "@/types/collaboration";
 import {
   createSessionApi,
+  fetchFileContentForCollabApi,
   getOperationHistoryApi,
   getSessionByDocumentApi,
   joinSessionApi,
   leaveSessionApi,
 } from "@/apis/collaboration";
-import { message } from "antd";
 import { fetchMyProfileApi } from "@/apis/user";
-import { fetchFileContentForCollabApi } from "@/apis/collaboration";
+import { applyOperation, computeTextOperations, rebaseRemoteOperation } from "@/utils/collaboration-ot";
 
 interface UseCollaborationEditorOptions {
   fileId: string;
@@ -40,6 +39,15 @@ interface UseCollaborationEditorReturn {
   error: string | null;
 }
 
+function isOperationMessage(data: unknown): data is OperationMessage {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  const candidate = data as { type?: unknown; operation?: unknown };
+  return candidate.type === "operation" && typeof candidate.operation === "object" && candidate.operation !== null;
+}
+
 export const useCollaborationEditor = ({
   fileId,
   documentTitle,
@@ -47,6 +55,19 @@ export const useCollaborationEditor = ({
 }: UseCollaborationEditorOptions): UseCollaborationEditorReturn => {
   const wsRef = useRef<WebSocket | null>(null);
   const wsConnectedRef = useRef(false);
+  const sessionRef = useRef<SessionInfoResponse | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const userIdRef = useRef("current-user");
+  const usernameRef = useRef("User");
+  const initializedRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentRef = useRef("");
+  const currentVersionRef = useRef(0);
+  const savedContentRef = useRef("");
+  const pendingOpsRef = useRef<TextOperation[]>([]);
+  const inFlightOpsRef = useRef<TextOperation[]>([]);
+  const awaitingAckRef = useRef(false);
+
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<SessionInfoResponse | null>(null);
   const [content, setContentState] = useState("");
@@ -56,133 +77,154 @@ export const useCollaborationEditor = ({
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const pendingOpsRef = useRef<TextOperation[]>([]);
-  const pendingOpRef = useRef<TextOperation | null>(null);
-  const awaitingAckRef = useRef(false);
-  const sessionIdRef = useRef<string | null>(null);
-  const userIdRef = useRef<string>("current-user");
-  const usernameRef = useRef<string>("User");
-  const initialContentRef = useRef<string>("");
-  const savedContentRef = useRef<string>("");
-  const sessionRef = useRef<SessionInfoResponse | null>(null);
-  const initializedRef = useRef(false);
-  const setUsersRef = useRef(setUsers);
-  const setCurrentVersionRef = useRef(setCurrentVersion);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  contentRef.current = content;
   sessionRef.current = session;
-  setUsersRef.current = setUsers;
-  setCurrentVersionRef.current = setCurrentVersion;
+  currentVersionRef.current = currentVersion;
 
-  const getWebSocketUrl = useCallback((sessionId: string) => {
+  const updateContent = useCallback(
+    (nextContent: string) => {
+      contentRef.current = nextContent;
+      setContentState(nextContent);
+      onContentChange?.(nextContent);
+      setSaved(nextContent === savedContentRef.current);
+    },
+    [onContentChange],
+  );
+
+  const getWebSocketUrl = useCallback((currentSessionId: string) => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsHost = import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082`;
     const encodedUsername = encodeURIComponent(usernameRef.current);
-    return `${protocol}//${wsHost}/api/v1.0/ws/collaboration/${sessionId}?userId=${userIdRef.current}&username=${encodedUsername}`;
+    return `${protocol}//${wsHost}/api/v1.0/ws/collaboration/${currentSessionId}?userId=${userIdRef.current}&username=${encodedUsername}`;
   }, []);
 
-  const computeOperations = (
-    oldContent: string,
-    newContent: string,
-    oderId: string,
-    version: number,
-  ): TextOperation[] => {
-    const ops: TextOperation[] = [];
-    let i = 0;
-    let j = 0;
-
-    while (i < oldContent.length || j < newContent.length) {
-      if (i < oldContent.length && j < newContent.length && oldContent[i] === newContent[j]) {
-        i++;
-        j++;
-      } else if (j < newContent.length) {
-        ops.push({
-          id: crypto.randomUUID(),
-          type: "INSERT",
-          position: j,
-          content: newContent[j],
-          length: 1,
-          userId: oderId,
-          clientVersion: version,
-          timestamp: new Date().toISOString(),
-        });
-        j++;
-      } else {
-        ops.push({
-          id: crypto.randomUUID(),
-          type: "DELETE",
-          position: i,
-          content: "",
-          length: 1,
-          userId: oderId,
-          clientVersion: version,
-          timestamp: new Date().toISOString(),
-        });
-        i++;
-      }
+  const flushPendingOperations = useCallback(() => {
+    if (
+      !sessionRef.current ||
+      pendingOpsRef.current.length === 0 ||
+      awaitingAckRef.current ||
+      wsRef.current?.readyState !== WebSocket.OPEN
+    ) {
+      return;
     }
 
-    return ops;
-  };
+    const batchOps = [...pendingOpsRef.current];
+    pendingOpsRef.current = [];
+    inFlightOpsRef.current = batchOps;
+    awaitingAckRef.current = true;
 
-  const handleWebSocketMessage = useCallback((data: Record<string, unknown>) => {
-    const msgType = data.type as string;
-    
-    if (msgType === "operation_ack") {
-      const ack = data as unknown as OperationAckMessage;
-      if (ack.success) {
-        setCurrentVersionRef.current(ack.version);
-        pendingOpRef.current = null;
+    wsRef.current.send(
+      JSON.stringify({
+        type: "operation_batch",
+        sessionId: sessionRef.current.sessionId,
+        operations: batchOps,
+      }),
+    );
+  }, []);
+
+  const scheduleFlush = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      flushPendingOperations();
+    }, 150);
+  }, [flushPendingOperations]);
+
+  const handleOperationAck = useCallback(
+    (ack: OperationAckMessage) => {
+      if (!ack.success) {
         awaitingAckRef.current = false;
-        
-        // 如果有待处理的操作，继续发送
-        if (pendingOpsRef.current.length > 0) {
-          const nextOp = pendingOpsRef.current.shift()!;
-          if (wsRef.current?.readyState === WebSocket.OPEN) {
-            awaitingAckRef.current = true;
-            wsRef.current.send(
-              JSON.stringify({
-                type: "operation",
-                sessionId: sessionIdRef.current,
-                operation: nextOp,
-              } as OperationMessage),
-            );
-          }
+        inFlightOpsRef.current = [];
+        setError(ack.errorMessage || "Operation sync failed");
+        return;
+      }
+
+      awaitingAckRef.current = false;
+      inFlightOpsRef.current = [];
+      setCurrentVersion(ack.serverVersion);
+      currentVersionRef.current = ack.serverVersion;
+      flushPendingOperations();
+    },
+    [flushPendingOperations],
+  );
+
+  const handleRemoteOperation = useCallback(
+    (messageData: unknown) => {
+      if (!isOperationMessage(messageData)) {
+        return;
+      }
+
+      const incomingOperation = messageData.operation as TextOperation;
+      if (incomingOperation.userId === userIdRef.current) {
+        return;
+      }
+
+      const localOutstanding = [...inFlightOpsRef.current, ...pendingOpsRef.current];
+      const { remoteOperation, localOperations } = rebaseRemoteOperation(incomingOperation, localOutstanding);
+
+      const inFlightCount = inFlightOpsRef.current.length;
+      inFlightOpsRef.current = localOperations.slice(0, inFlightCount);
+      pendingOpsRef.current = localOperations.slice(inFlightCount);
+
+      updateContent(applyOperation(contentRef.current, remoteOperation));
+
+      if (typeof messageData.serverVersion === "number") {
+        setCurrentVersion(messageData.serverVersion);
+        currentVersionRef.current = messageData.serverVersion;
+      }
+    },
+    [updateContent],
+  );
+
+  const handleWebSocketMessage = useCallback(
+    (data: Record<string, unknown>) => {
+      const msgType = data.type as string;
+
+      if (msgType === "operation_ack") {
+        handleOperationAck(data as unknown as OperationAckMessage);
+        return;
+      }
+
+      if (msgType === "session_state") {
+        const state = data as unknown as SessionStateMessage;
+        setUsers(state.activeUsers || []);
+        if (typeof state.version === "number") {
+          setCurrentVersion(state.version);
+          currentVersionRef.current = state.version;
         }
+        return;
       }
-    } else if (msgType === "session_state") {
-      if (data.activeUsers) {
-        setUsersRef.current(data.activeUsers as CollabUser[]);
+
+      if (msgType === "operation") {
+        handleRemoteOperation(data);
       }
-      if (data.version !== undefined) {
-        setCurrentVersionRef.current(data.version as number);
-      }
-    }
-  }, []);
+    },
+    [handleOperationAck, handleRemoteOperation],
+  );
 
   const connectWebSocket = useCallback(
-    (sessionId: string) => {
+    (currentSessionId: string) => {
       if (wsConnectedRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
         return;
       }
 
-      const url = getWebSocketUrl(sessionId);
-
-      const ws = new WebSocket(url);
+      const ws = new WebSocket(getWebSocketUrl(currentSessionId));
       wsRef.current = ws;
 
       ws.onopen = () => {
         wsConnectedRef.current = true;
         setConnected(true);
-        sessionIdRef.current = sessionId;
+        sessionIdRef.current = currentSessionId;
+        flushPendingOperations();
       };
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          handleWebSocketMessage(data);
+          handleWebSocketMessage(JSON.parse(event.data) as Record<string, unknown>);
         } catch {
-          // Ignore parse errors
+          // Ignore malformed frames from diagnostics or proxies.
         }
       };
 
@@ -195,63 +237,38 @@ export const useCollaborationEditor = ({
         setError("WebSocket连接失败");
       };
     },
-    [getWebSocketUrl, handleWebSocketMessage],
+    [flushPendingOperations, getWebSocketUrl, handleWebSocketMessage],
   );
-
-  const contentRef = useRef(content);
-  contentRef.current = content;
-
-  const debouncedSendOperations = useCallback(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    
-    debounceTimerRef.current = setTimeout(() => {
-      const currentSession = sessionRef.current;
-      if (!currentSession || pendingOpsRef.current.length === 0) {
-        return;
-      }
-      
-      if (wsRef.current?.readyState === WebSocket.OPEN && !awaitingAckRef.current) {
-        const batchOps = [...pendingOpsRef.current];
-        pendingOpsRef.current = [];
-        
-        awaitingAckRef.current = true;
-        wsRef.current.send(
-          JSON.stringify({
-            type: "operation_batch",
-            sessionId: currentSession.sessionId,
-            operations: batchOps,
-          } as unknown as OperationMessage),
-        );
-      }
-    }, 300);
-  }, []);
 
   const setContent = useCallback(
     (newContent: string) => {
-      setContentState(newContent);
-      onContentChange?.(newContent);
-      setSaved(newContent === savedContentRef.current);
+      const previousContent = contentRef.current;
+      updateContent(newContent);
 
-      const currentSession = sessionRef.current;
-      if (currentSession) {
-        const oldContent = contentRef.current;
-        const version = currentVersion;
-        const ops = computeOperations(oldContent, newContent, userIdRef.current, version);
-        
-        if (ops.length > 0) {
-          pendingOpsRef.current.push(...ops);
-          debouncedSendOperations();
-        }
+      if (!sessionRef.current) {
+        return;
       }
+
+      const operations = computeTextOperations(
+        previousContent,
+        newContent,
+        userIdRef.current,
+        currentVersionRef.current,
+      );
+
+      if (operations.length === 0) {
+        return;
+      }
+
+      pendingOpsRef.current.push(...operations);
+      scheduleFlush();
     },
-    [onContentChange, currentVersion, debouncedSendOperations],
+    [scheduleFlush, updateContent],
   );
 
   const markSaved = useCallback(() => {
-    setSaved(true);
     savedContentRef.current = contentRef.current;
+    setSaved(true);
   }, []);
 
   useEffect(() => {
@@ -262,11 +279,10 @@ export const useCollaborationEditor = ({
 
     const initSession = async () => {
       setLoading(true);
-      
+
       try {
-        let userProfile;
         try {
-          userProfile = await fetchMyProfileApi();
+          const userProfile = await fetchMyProfileApi();
           userIdRef.current = userProfile.userId;
           usernameRef.current = userProfile.username || "User";
         } catch {
@@ -274,19 +290,19 @@ export const useCollaborationEditor = ({
           usernameRef.current = "User";
         }
 
-        let sess: SessionInfoResponse | null = null;
+        let currentSession: SessionInfoResponse | null = null;
         const maxRetries = 3;
 
-        for (let attempt = 0; attempt < maxRetries && !sess; attempt++) {
+        for (let attempt = 0; attempt < maxRetries && !currentSession; attempt++) {
           try {
-            sess = await getSessionByDocumentApi(fileId);
+            currentSession = await getSessionByDocumentApi(fileId);
           } catch (err) {
             const axiosError = err as { response?: { status?: number } };
             const status = axiosError.response?.status;
 
             if (status === 404) {
               try {
-                sess = await createSessionApi({
+                currentSession = await createSessionApi({
                   documentId: fileId,
                   documentTitle,
                   ttlHours: 24,
@@ -295,7 +311,7 @@ export const useCollaborationEditor = ({
                 const createError = createErr as { response?: { status?: number } };
                 const createStatus = createError.response?.status;
                 if (createStatus === 409 || createStatus === 500) {
-                  sess = await getSessionByDocumentApi(fileId);
+                  currentSession = await getSessionByDocumentApi(fileId);
                 } else if (attempt < maxRetries - 1) {
                   await new Promise((resolve) => setTimeout(resolve, 500));
                   continue;
@@ -303,29 +319,28 @@ export const useCollaborationEditor = ({
                   throw createErr;
                 }
               }
-            } else if (status === 409 || status === 500) {
+            } else if ((status === 409 || status === 500) && attempt < maxRetries - 1) {
               await new Promise((resolve) => setTimeout(resolve, 500));
-              continue;
             } else if (attempt < maxRetries - 1) {
               await new Promise((resolve) => setTimeout(resolve, 500));
-              continue;
             } else {
               throw err;
             }
           }
         }
 
-        if (!sess) {
+        if (!currentSession) {
           throw new Error("Failed to get or create session");
         }
 
-        setSession(sess);
-        setUsers(sess.activeUsers || []);
-        setCurrentVersion(sess.version || 0);
-        sessionIdRef.current = sess.sessionId;
+        setSession(currentSession);
+        setUsers(currentSession.activeUsers || []);
+        setCurrentVersion(currentSession.version || 0);
+        currentVersionRef.current = currentSession.version || 0;
+        sessionIdRef.current = currentSession.sessionId;
 
         try {
-          await joinSessionApi(sess.sessionId);
+          await joinSessionApi(currentSession.sessionId);
         } catch (joinErr) {
           const joinError = joinErr as { response?: { status?: number } };
           if (joinError.response?.status !== 409) {
@@ -333,7 +348,6 @@ export const useCollaborationEditor = ({
           }
         }
 
-        // Step 1: Fetch file content first (this is the source of truth after save)
         let initialContent = "";
         try {
           const fileBlob = await fetchFileContentForCollabApi(fileId);
@@ -342,34 +356,18 @@ export const useCollaborationEditor = ({
           initialContent = "";
         }
 
-        // Step 2: Get baseVersion from session - only apply operations AFTER this version
-        // This prevents double-applying operations that were already saved to file
-        const baseVersion = (sess as SessionInfoResponse).baseVersion || 0;
-        
-        // Step 3: Fetch operations that happened AFTER the base version
-        const history = await getOperationHistoryApi(sess.sessionId, baseVersion);
+        const baseVersion = currentSession.baseVersion || 0;
+        const history: OperationHistoryResponse = await getOperationHistoryApi(currentSession.sessionId, baseVersion);
 
-        // Step 4: Apply operations on top of file content
-        if (history.operations && history.operations.length > 0) {
-          const sortedOps = [...history.operations].sort((a, b) => a.clientVersion - b.clientVersion);
-          for (const op of sortedOps) {
-            if (op.type === "INSERT" && op.content !== undefined) {
-              const pos = Math.min(op.position, initialContent.length);
-              initialContent = initialContent.slice(0, pos) + op.content + initialContent.slice(pos);
-            } else if (op.type === "DELETE" && op.length) {
-              const pos = Math.min(op.position, initialContent.length);
-              initialContent = initialContent.slice(0, pos) + initialContent.slice(pos + op.length);
-            }
-          }
+        for (const operation of history.operations || []) {
+          initialContent = applyOperation(initialContent, operation);
         }
 
-        initialContentRef.current = initialContent;
         savedContentRef.current = initialContent;
-        setContentState(initialContent);
-        
+        updateContent(initialContent);
         setLoading(false);
-        connectWebSocket(sess.sessionId);
-      } catch (err) {
+        connectWebSocket(currentSession.sessionId);
+      } catch {
         setError("初始化协同会话失败");
         message.error("初始化协同会话失败");
         setLoading(false);
@@ -380,17 +378,23 @@ export const useCollaborationEditor = ({
 
     return () => {
       wsConnectedRef.current = false;
+      awaitingAckRef.current = false;
+      pendingOpsRef.current = [];
+      inFlightOpsRef.current = [];
+
       if (wsRef.current) {
         wsRef.current.close();
       }
+
       if (sessionIdRef.current) {
         void leaveSessionApi(sessionIdRef.current);
       }
+
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [fileId, documentTitle, connectWebSocket]);
+  }, [connectWebSocket, documentTitle, fileId, updateContent]);
 
   return {
     loading,

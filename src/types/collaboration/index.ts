@@ -53,6 +53,7 @@ export interface TextOperation {
   userId: string;
   clientVersion: number;
   timestamp: string;
+  serverVersion?: number;
 }
 
 export type TextOperationType = "INSERT" | "DELETE" | "RETAIN";
@@ -82,6 +83,7 @@ export interface UpdateCursorCommand {
 export interface OperationMessage {
   type: "operation";
   sessionId: string;
+  serverVersion?: number;
   operation: SubmitOperationCommand | TextOperation;
 }
 
@@ -92,16 +94,17 @@ export interface CursorMessage {
 }
 
 export interface SessionStateMessage {
-  type: "state";
+  type: "session_state";
   sessionId: string;
-  content: string;
   version: number;
-  users: CollabUser[];
+  activeUsers: CollabUser[];
+  cursors: Record<string, CursorPosition>;
 }
 
 export interface OperationAckMessage {
-  type: "ack";
+  type: "operation_ack";
   sessionId: string;
-  version: number;
+  serverVersion: number;
   success: boolean;
+  errorMessage?: string;
 }
