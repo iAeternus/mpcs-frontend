@@ -9,6 +9,7 @@ import type {
   RenameGroupCommand,
 } from "@/types/group/command";
 import type {
+  FolderPermissionResponse,
   GroupFoldersResponse,
   GroupManagersResponse,
   GroupOrdinaryMembersResponse,
@@ -183,6 +184,32 @@ export const pageMyGroupsAsForMemberApi = async (
     url: `/groups/page/my-joined`,
     method: "POST",
     data: query,
+  });
+  return res.data;
+};
+
+/** 获取管理员对当前文件夹的权限 */
+export const fetchAdminPermissionApi = async (
+  customId: string,
+  folderId: string,
+): Promise<FolderPermissionResponse> => {
+  const res = await http.request<FolderPermissionResponse>({
+    url: `/groups/permission/admin`,
+    method: "GET",
+    params: { customId, folderId },
+  });
+  return res.data;
+};
+
+/** 获取普通成员对当前文件夹的权限 */
+export const fetchMemberPermissionApi = async (
+  customId: string,
+  folderId: string,
+): Promise<FolderPermissionResponse> => {
+  const res = await http.request<FolderPermissionResponse>({
+    url: `/groups/permission/member`,
+    method: "GET",
+    params: { customId, folderId },
   });
   return res.data;
 };

@@ -122,6 +122,19 @@ export const fetchFileContentForCollabApi = async (
   return res.data;
 };
 
+/** 更新基准版本 */
+export const updateBaseVersionApi = async (
+  sessionId: string,
+  baseVersion: number,
+): Promise<SessionInfoResponse> => {
+  const res = await http.request<SessionInfoResponse>({
+    url: `${COLLAB_BASE}/sessions/${sessionId}/base-version`,
+    method: "PUT",
+    params: { baseVersion },
+  });
+  return res.data;
+};
+
 /** 保存协同编辑后的文件内容 */
 export const saveFileContentApi = async (
   fileId: string,

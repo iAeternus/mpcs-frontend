@@ -1,11 +1,20 @@
 import type { SearchablePageQuery } from "../common/page";
 import type { InheritancePolicy } from "./enums/inheritancePolicy";
+import type { Permission } from "./enums/permission";
 
 // 分页查询我管理的组
 export type MyGroupsAsForManagerPageQuery = SearchablePageQuery;
 
 // 分页查询我加入的组
 export type MyGroupsAsForMemberPageQuery = SearchablePageQuery;
+
+export interface FolderPermissionResponse {
+  folderId: string;
+  customId: string;
+  permissions: Permission[];
+  roleType: string;
+  inherited: boolean;
+}
 
 export interface GroupFoldersResponse {
   groupFolders: GroupFolder[];

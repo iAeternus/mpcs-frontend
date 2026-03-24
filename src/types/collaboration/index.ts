@@ -9,6 +9,7 @@ export interface SessionInfoResponse {
   documentTitle: string;
   version: number;
   documentLength: number;
+  baseVersion: number;
   activeUserCount: number;
   activeUsers: CollabUser[];
   cursors: Record<string, CursorPosition>;

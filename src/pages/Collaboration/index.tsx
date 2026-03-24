@@ -17,7 +17,7 @@ import {
 } from "@ant-design/icons";
 import "@/pages/Collaboration/index.css";
 import { useCollaborationEditor } from "@/hooks/useCollaborationEditor";
-import { saveFileContentApi } from "@/apis/collaboration";
+import { saveFileContentApi, updateBaseVersionApi, getSessionInfoApi } from "@/apis/collaboration";
 import { testWebSocketConnection } from "@/utils/websocket-test";
 
 const CollaborationPage = () => {
@@ -64,6 +64,19 @@ const CollaborationPage = () => {
     try {
       const blob = new Blob([content], { type: "text/markdown" });
       await saveFileContentApi(fileId, parentId, blob, fileTitle);
+      
+      // Update baseVersion to current version after saving
+      // Use local currentVersion which is updated via WebSocket in real-time
+      if (session?.sessionId) {
+        try {
+          // Wait a bit for WebSocket operations to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await updateBaseVersionApi(session.sessionId, currentVersion);
+        } catch (err) {
+          console.error("Failed to update baseVersion:", err);
+        }
+      }
+      
       markSaved();
       setLastSaved(new Date());
       message.success("文件保存成功");

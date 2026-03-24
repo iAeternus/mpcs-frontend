@@ -16,6 +16,7 @@ import {
   getSessionByDocumentApi,
   joinSessionApi,
   leaveSessionApi,
+  updateBaseVersionApi,
 } from "@/apis/collaboration";
 import { message } from "antd";
 import { fetchMyProfileApi } from "@/apis/user";
@@ -68,6 +69,7 @@ export const useCollaborationEditor = ({
   const initializedRef = useRef(false);
   const setUsersRef = useRef(setUsers);
   const setCurrentVersionRef = useRef(setCurrentVersion);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   sessionRef.current = session;
   setUsersRef.current = setUsers;
@@ -224,6 +226,33 @@ export const useCollaborationEditor = ({
   const contentRef = useRef(content);
   contentRef.current = content;
 
+  const debouncedSendOperations = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    debounceTimerRef.current = setTimeout(() => {
+      const currentSession = sessionRef.current;
+      if (!currentSession || pendingOpsRef.current.length === 0) {
+        return;
+      }
+      
+      if (wsRef.current?.readyState === WebSocket.OPEN && !awaitingAckRef.current) {
+        const batchOps = [...pendingOpsRef.current];
+        pendingOpsRef.current = [];
+        
+        awaitingAckRef.current = true;
+        wsRef.current.send(
+          JSON.stringify({
+            type: "operation_batch",
+            sessionId: currentSession.sessionId,
+            operations: batchOps,
+          } as OperationMessage),
+        );
+      }
+    }, 300);
+  }, []);
+
   const setContent = useCallback(
     (newContent: string) => {
       setContentState(newContent);
@@ -235,12 +264,14 @@ export const useCollaborationEditor = ({
         const oldContent = contentRef.current;
         const version = currentVersion;
         const ops = computeOperations(oldContent, newContent, userIdRef.current, version);
-        ops.forEach((op) => {
-          sendOperation(op, currentSession.sessionId);
-        });
+        
+        if (ops.length > 0) {
+          pendingOpsRef.current.push(...ops);
+          debouncedSendOperations();
+        }
       }
     },
-    [onContentChange, sendOperation, currentVersion],
+    [onContentChange, currentVersion, debouncedSendOperations],
   );
 
   const markSaved = useCallback(() => {
@@ -327,9 +358,7 @@ export const useCollaborationEditor = ({
           }
         }
 
-        const history = await getOperationHistoryApi(sess.sessionId, 0);
-        
-        // Step 1: Always fetch file content first
+        // Step 1: Fetch file content first (this is the source of truth after save)
         let initialContent = "";
         try {
           const fileBlob = await fetchFileContentForCollabApi(fileId);
@@ -337,8 +366,15 @@ export const useCollaborationEditor = ({
         } catch {
           initialContent = "";
         }
+
+        // Step 2: Get baseVersion from session - only apply operations AFTER this version
+        // This prevents double-applying operations that were already saved to file
+        const baseVersion = (sess as SessionInfoResponse).baseVersion || 0;
         
-        // Step 2: Apply operations on top of file content
+        // Step 3: Fetch operations that happened AFTER the base version
+        const history = await getOperationHistoryApi(sess.sessionId, baseVersion);
+
+        // Step 4: Apply operations on top of file content
         if (history.operations && history.operations.length > 0) {
           const sortedOps = [...history.operations].sort((a, b) => a.clientVersion - b.clientVersion);
           for (const op of sortedOps) {
@@ -374,6 +410,9 @@ export const useCollaborationEditor = ({
       }
       if (sessionIdRef.current) {
         void leaveSessionApi(sessionIdRef.current);
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
   }, [fileId, documentTitle, connectWebSocket]);
