@@ -5,7 +5,7 @@
 export const testWebSocketConnection = async (sessionId: string, userId: string, username: string) => {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsHost = import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082`;
-  const url = `${protocol}//${wsHost}/ws/collaboration/${sessionId}?userId=${userId}&username=${encodeURIComponent(username)}`;
+  const url = `${protocol}//${wsHost}/api/v1.0/ws/collaboration/${sessionId}?userId=${userId}&username=${encodeURIComponent(username)}`;
   
   console.log("Testing WebSocket connection to:", url);
   console.log("Current location:", window.location.href);

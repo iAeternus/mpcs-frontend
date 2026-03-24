@@ -17,7 +17,7 @@ import {
 } from "@ant-design/icons";
 import "@/pages/Collaboration/index.css";
 import { useCollaborationEditor } from "@/hooks/useCollaborationEditor";
-import { saveFileContentApi, updateBaseVersionApi, getSessionInfoApi } from "@/apis/collaboration";
+import { saveFileContentApi, updateBaseVersionApi } from "@/apis/collaboration";
 import { testWebSocketConnection } from "@/utils/websocket-test";
 
 const CollaborationPage = () => {

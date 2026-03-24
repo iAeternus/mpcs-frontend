@@ -1,5 +1,13 @@
-import { Progress, Typography, Button } from "antd";
+import { Progress, Typography, Button, Badge } from "antd";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useAppSelector } from "@/store";
+import {
+  CloseOutlined,
+  MinusOutlined,
+  UploadOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 
 const { Text } = Typography;
 
@@ -35,13 +43,15 @@ const stepLabels: Record<UploadStep, string> = {
 const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 };
 
 const formatSpeed = (bytesPerSecond: number): string => {
   if (bytesPerSecond < 1024) return `${bytesPerSecond.toFixed(0)} B/s`;
-  if (bytesPerSecond < 1024 * 1024) return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
+  if (bytesPerSecond < 1024 * 1024)
+    return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
   return `${(bytesPerSecond / 1024 / 1024).toFixed(1)} MB/s`;
 };
 
@@ -51,9 +61,28 @@ interface UploadProgressProps {
 }
 
 const UploadProgress: React.FC<UploadProgressProps> = ({ state, onClose }) => {
-  const { visible, step, fileName, fileSize, totalChunks, uploadedChunks, hashProgress, uploadProgress } = state;
+  const {
+    visible,
+    step,
+    fileName,
+    fileSize,
+    totalChunks,
+    uploadedChunks,
+    hashProgress,
+    uploadProgress,
+  } = state;
+  const themeMode = useAppSelector((state) => state.theme.mode);
+  const isDark = themeMode === "dark";
+
   const startTimeRef = useRef<number>(0);
   const [speed, setSpeed] = useState<number>(0);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [position, setPosition] = useState(() => ({
+    x: typeof window !== "undefined" ? window.innerWidth - 24 - 360 : 1024 - 24 - 360,
+    y: typeof window !== "undefined" ? window.innerHeight - 24 - 300 : 768 - 24 - 300,
+  }));
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (visible && step === "uploading") {
@@ -68,11 +97,48 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ state, onClose }) => {
     }
   }, [visible, step, uploadProgress, fileSize]);
 
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragOffset.current.x,
+          y: e.clientY - dragOffset.current.y,
+        });
+      }
+    },
+    [isDragging],
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  useEffect(() => {
+    if (!visible) {
+      setIsMinimized(false);
+      startTimeRef.current = 0;
+      setSpeed(0);
+    }
+  }, [visible]);
+
   if (!visible) return null;
 
   const isFinished = step === "completed" || step === "error";
   const overallProgress = isFinished
-    ? step === "completed" ? 100 : 0
+    ? step === "completed"
+      ? 100
+      : 0
     : step === "hashing"
       ? Math.round(hashProgress)
       : step === "initializing"
@@ -84,7 +150,13 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ state, onClose }) => {
             : 0;
 
   const getEstimatedTime = (): string => {
-    if (step !== "uploading" || speed === 0 || !fileSize || !uploadProgress || uploadProgress >= 100) {
+    if (
+      step !== "uploading" ||
+      speed === 0 ||
+      !fileSize ||
+      !uploadProgress ||
+      uploadProgress >= 100
+    ) {
       return "";
     }
     const remaining = (fileSize * (100 - uploadProgress)) / 100;
@@ -101,15 +173,31 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ state, onClose }) => {
     {
       key: "hash",
       label: "计算哈希",
-      progress: step === "hashing" ? hashProgress : step === "initializing" || step === "uploading" || step === "merging" || step === "completed" ? 100 : 0,
+      progress:
+        step === "hashing"
+          ? hashProgress
+          : step === "initializing" ||
+              step === "uploading" ||
+              step === "merging" ||
+              step === "completed"
+            ? 100
+            : 0,
       active: step === "hashing",
     },
     {
       key: "upload",
       label: "分片上传",
-      progress: step === "uploading" ? uploadProgress : (step === "merging" || step === "completed" ? 100 : 0),
+      progress:
+        step === "uploading"
+          ? uploadProgress
+          : step === "merging" || step === "completed"
+            ? 100
+            : 0,
       active: step === "uploading",
-      extra: totalChunks && uploadedChunks ? `${uploadedChunks}/${totalChunks}` : undefined,
+      extra:
+        totalChunks && uploadedChunks
+          ? `${uploadedChunks}/${totalChunks}`
+          : undefined,
     },
     {
       key: "merge",
@@ -119,42 +207,187 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ state, onClose }) => {
     },
   ];
 
+  const colors = {
+    bg: isDark ? "#1f1f1f" : "#fff",
+    border: isDark ? "#303030" : "#f0f0f0",
+    text: isDark ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.88)",
+    textSecondary: isDark ? "rgba(255,255,255,0.45)" : "#999",
+    textTertiary: isDark ? "rgba(255,255,255,0.35)" : "#666",
+    accent: isDark ? "#8b5cf6" : "#6366f1",
+    success: "#52c41a",
+    error: "#ff4d4f",
+    trail: isDark ? "#303030" : "#f0f0f0",
+    trailSmall: isDark ? "#262626" : "#f5f5f5",
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    dragOffset.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+  };
+
+  const getStepIcon = () => {
+    if (step === "completed") {
+      return (
+        <CheckCircleOutlined style={{ color: colors.success, fontSize: 20 }} />
+      );
+    }
+    if (step === "error") {
+      return (
+        <ExclamationCircleOutlined
+          style={{ color: colors.error, fontSize: 20 }}
+        />
+      );
+    }
+    return <UploadOutlined style={{ color: colors.accent, fontSize: 20 }} />;
+  };
+
+  if (isMinimized) {
+    const handleBallMouseDown = (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsDragging(true);
+      dragOffset.current = {
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
+      };
+    };
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          top: position.y,
+          left: position.x,
+          zIndex: 1000,
+        }}
+      >
+        <Badge
+          count={isFinished ? 0 : overallProgress}
+          overflowCount={100}
+          size="small"
+        >
+          <div
+            onMouseDown={handleBallMouseDown}
+            onClick={() => {
+              if (!isDragging) {
+                setIsMinimized(false);
+              }
+            }}
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              background: isDark ? "#1f1f1f" : "#fff",
+              border: `1px solid ${isDark ? "#303030" : "#e8e8e8"}`,
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: isDragging ? "grabbing" : "grab",
+              transition: isDragging ? "none" : "transform 0.2s",
+              userSelect: "none",
+            }}
+            onMouseEnter={(e) => {
+              if (!isDragging) {
+                e.currentTarget.style.transform = "scale(1.05)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isDragging) {
+                e.currentTarget.style.transform = "scale(1)";
+              }
+            }}
+          >
+            {getStepIcon()}
+          </div>
+        </Badge>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
         position: "fixed",
-        bottom: 24,
-        right: 24,
+        top: position.y,
+        left: position.x,
         width: 360,
-        background: "#fff",
+        background: colors.bg,
         borderRadius: 12,
-        boxShadow: "0 4px 24px rgba(0, 0, 0, 0.12)",
-        border: "1px solid #f0f0f0",
+        boxShadow: isDark
+          ? "0 4px 24px rgba(0, 0, 0, 0.4)"
+          : "0 4px 24px rgba(0, 0, 0, 0.12)",
+        border: `1px solid ${colors.border}`,
         zIndex: 1000,
         overflow: "hidden",
+        transition: isDragging ? "none" : "box-shadow 0.2s",
       }}
     >
       <div
+        onMouseDown={handleMouseDown}
         style={{
-          padding: "16px 20px",
-          borderBottom: "1px solid #f0f0f0",
+          padding: "12px 16px",
+          borderBottom: `1px solid ${colors.border}`,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          cursor: "move",
+          userSelect: "none",
+          background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
         }}
       >
-        <Text strong style={{ fontSize: 15 }}>上传进度</Text>
-        {isFinished && (
-          <Button type="text" size="small" onClick={onClose}>关闭</Button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {getStepIcon()}
+          <Text strong style={{ fontSize: 15, color: colors.text }}>
+            上传进度
+          </Text>
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          {!isFinished && (
+            <Button
+              type="text"
+              size="small"
+              icon={<MinusOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMinimized(true);
+              }}
+              style={{ color: colors.textSecondary }}
+            />
+          )}
+          {isFinished && (
+            <Button
+              type="text"
+              size="small"
+              icon={<CloseOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              style={{ color: colors.textSecondary }}
+            />
+          )}
+        </div>
       </div>
 
       <div style={{ padding: "16px 20px" }}>
         <div style={{ marginBottom: 4 }}>
-          <Text style={{ fontSize: 14, wordBreak: "break-all" }}>{fileName}</Text>
+          <Text
+            style={{ fontSize: 14, wordBreak: "break-all", color: colors.text }}
+          >
+            {fileName}
+          </Text>
         </div>
         {fileSize && (
-          <div style={{ color: "#999", fontSize: 13, marginBottom: 16 }}>
+          <div
+            style={{
+              color: colors.textSecondary,
+              fontSize: 13,
+              marginBottom: 16,
+            }}
+          >
             {formatFileSize(fileSize)}
           </div>
         )}
@@ -162,35 +395,76 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ state, onClose }) => {
         <Progress
           percent={overallProgress}
           strokeColor={{
-            "0%": "#1890ff",
-            "100%": step === "error" ? "#ff4d4f" : "#52c41a",
+            "0%": colors.accent,
+            "100%": step === "error" ? colors.error : colors.success,
           }}
-          trailColor="#f0f0f0"
-          status={step === "error" ? "exception" : isFinished ? "success" : "active"}
+          trailColor={colors.trail}
+          status={
+            step === "error" ? "exception" : isFinished ? "success" : "active"
+          }
           style={{ marginBottom: 4 }}
         />
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <Text style={{ fontSize: 13, color: step === "error" ? "#ff4d4f" : "#333" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 13,
+              color: step === "error" ? colors.error : colors.text,
+            }}
+          >
             {stepLabels[step]}
           </Text>
           {speed > 0 && (
-            <Text style={{ fontSize: 12, color: "#999" }}>
+            <Text style={{ fontSize: 12, color: colors.textSecondary }}>
               {formatSpeed(speed)}
             </Text>
           )}
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 12, color: "#666", marginBottom: 8, display: "block" }}>上传详情</Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.textTertiary,
+              marginBottom: 8,
+              display: "block",
+            }}
+          >
+            上传详情
+          </Text>
           {phaseItems.map((item) => (
             <div key={item.key} style={{ marginBottom: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                <Text style={{ fontSize: 12, color: item.active ? "#1890ff" : "#666" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 2,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: item.active ? colors.accent : colors.textTertiary,
+                  }}
+                >
                   {item.label}
-                  {item.extra && <span style={{ color: "#999", marginLeft: 4 }}>({item.extra})</span>}
+                  {item.extra && (
+                    <span
+                      style={{ color: colors.textSecondary, marginLeft: 4 }}
+                    >
+                      ({item.extra})
+                    </span>
+                  )}
                 </Text>
-                <Text style={{ fontSize: 12, color: "#999" }}>
+                <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                   {Math.round(item.progress)}%
                 </Text>
               </div>
@@ -198,21 +472,21 @@ const UploadProgress: React.FC<UploadProgressProps> = ({ state, onClose }) => {
                 percent={item.progress}
                 showInfo={false}
                 size="small"
-                strokeColor={item.active ? "#1890ff" : "#52c41a"}
-                trailColor="#f5f5f5"
+                strokeColor={item.active ? colors.accent : colors.success}
+                trailColor={colors.trailSmall}
               />
             </div>
           ))}
         </div>
 
         {getEstimatedTime() && (
-          <Text style={{ fontSize: 12, color: "#999" }}>
+          <Text style={{ fontSize: 12, color: colors.textSecondary }}>
             {getEstimatedTime()}
           </Text>
         )}
 
         {step === "error" && (
-          <div style={{ color: "#ff4d4f", fontSize: 13, marginTop: 8 }}>
+          <div style={{ color: colors.error, fontSize: 13, marginTop: 8 }}>
             上传失败，请检查网络后重试
           </div>
         )}
@@ -234,19 +508,22 @@ export const useUploadProgress = () => {
     uploadedChunks: 0,
   });
 
-  const startUpload = useCallback((fileName: string, fileSize?: number, totalChunks?: number) => {
-    setState({
-      visible: true,
-      step: "hashing",
-      progress: 0,
-      hashProgress: 0,
-      uploadProgress: 0,
-      fileName,
-      fileSize,
-      totalChunks,
-      uploadedChunks: 0,
-    });
-  }, []);
+  const startUpload = useCallback(
+    (fileName: string, fileSize?: number, totalChunks?: number) => {
+      setState({
+        visible: true,
+        step: "hashing",
+        progress: 0,
+        hashProgress: 0,
+        uploadProgress: 0,
+        fileName,
+        fileSize,
+        totalChunks,
+        uploadedChunks: 0,
+      });
+    },
+    [],
+  );
 
   const setStep = useCallback((step: UploadStep) => {
     setState((prev) => ({ ...prev, step }));
@@ -256,20 +533,26 @@ export const useUploadProgress = () => {
     setState((prev) => ({ ...prev, hashProgress: progress }));
   }, []);
 
-  const setUploadProgress = useCallback((progress: number, uploadedChunks?: number) => {
-    setState((prev) => ({
-      ...prev,
-      uploadProgress: progress,
-      uploadedChunks: uploadedChunks ?? prev.uploadedChunks,
-    }));
-  }, []);
+  const setUploadProgress = useCallback(
+    (progress: number, uploadedChunks?: number) => {
+      setState((prev) => ({
+        ...prev,
+        uploadProgress: progress,
+        uploadedChunks: uploadedChunks ?? prev.uploadedChunks,
+      }));
+    },
+    [],
+  );
 
   const setTotalChunks = useCallback((total: number) => {
     setState((prev) => ({ ...prev, totalChunks: total }));
   }, []);
 
   const incrementUploadedChunks = useCallback((count: number = 1) => {
-    setState((prev) => ({ ...prev, uploadedChunks: (prev.uploadedChunks ?? 0) + count }));
+    setState((prev) => ({
+      ...prev,
+      uploadedChunks: (prev.uploadedChunks ?? 0) + count,
+    }));
   }, []);
 
   const closeUpload = useCallback(() => {

@@ -16,7 +16,6 @@ import {
   getSessionByDocumentApi,
   joinSessionApi,
   leaveSessionApi,
-  updateBaseVersionApi,
 } from "@/apis/collaboration";
 import { message } from "antd";
 import { fetchMyProfileApi } from "@/apis/user";
@@ -69,7 +68,7 @@ export const useCollaborationEditor = ({
   const initializedRef = useRef(false);
   const setUsersRef = useRef(setUsers);
   const setCurrentVersionRef = useRef(setCurrentVersion);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   sessionRef.current = session;
   setUsersRef.current = setUsers;
@@ -77,9 +76,9 @@ export const useCollaborationEditor = ({
 
   const getWebSocketUrl = useCallback((sessionId: string) => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsHost = import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082/api/v1.0`;
+    const wsHost = import.meta.env.VITE_WS_HOST || `${window.location.hostname}:8082`;
     const encodedUsername = encodeURIComponent(usernameRef.current);
-    return `${protocol}//${wsHost}/ws/collaboration/${sessionId}?userId=${userIdRef.current}&username=${encodedUsername}`;
+    return `${protocol}//${wsHost}/api/v1.0/ws/collaboration/${sessionId}?userId=${userIdRef.current}&username=${encodedUsername}`;
   }, []);
 
   const computeOperations = (
@@ -199,30 +198,6 @@ export const useCollaborationEditor = ({
     [getWebSocketUrl, handleWebSocketMessage],
   );
 
-  const sendOperation = useCallback(
-    (operation: TextOperation, sid: string) => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        // 如果正在等待 ack，将操作加入队列
-        if (awaitingAckRef.current) {
-          pendingOpsRef.current.push(operation);
-          return;
-        }
-        
-        // 标记正在等待 ack
-        awaitingAckRef.current = true;
-        
-        wsRef.current.send(
-          JSON.stringify({
-            type: "operation",
-            sessionId: sid,
-            operation,
-          } as OperationMessage),
-        );
-      }
-    },
-    [],
-  );
-
   const contentRef = useRef(content);
   contentRef.current = content;
 
@@ -247,7 +222,7 @@ export const useCollaborationEditor = ({
             type: "operation_batch",
             sessionId: currentSession.sessionId,
             operations: batchOps,
-          } as OperationMessage),
+          } as unknown as OperationMessage),
         );
       }
     }, 300);
