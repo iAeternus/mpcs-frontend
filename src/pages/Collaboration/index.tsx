@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Avatar,
   Button,
+  Card,
   Drawer,
   Empty,
   List,
@@ -40,6 +41,15 @@ interface SelectionRange {
   end: number;
 }
 
+interface DiffVisualRow {
+  key: string;
+  type: "context" | "add" | "remove" | "change";
+  leftNumber?: number;
+  rightNumber?: number;
+  leftText: string;
+  rightText: string;
+}
+
 function getUserColor(userId: string): string {
   const colors = ["#1677ff", "#52c41a", "#fa8c16", "#f5222d", "#13c2c2", "#eb2f96", "#722ed1", "#a0d911"];
   let hash = 0;
@@ -52,6 +62,101 @@ function getUserColor(userId: string): string {
 function getErrorMessage(error: unknown, fallback: string): string {
   const candidate = error as { response?: { data?: { msg?: string; message?: string } }; message?: string };
   return candidate.response?.data?.msg || candidate.response?.data?.message || candidate.message || fallback;
+}
+
+function buildDiffRows(diff: RevisionDiffResponse | null): DiffVisualRow[] {
+  if (!diff) {
+    return [];
+  }
+
+  const rows: DiffVisualRow[] = [];
+  let leftLine = 1;
+  let rightLine = 1;
+
+  for (let index = 0; index < diff.unifiedDiffLines.length; index += 1) {
+    const line = diff.unifiedDiffLines[index];
+
+    if (line.startsWith("---") || line.startsWith("+++")) {
+      continue;
+    }
+
+    if (line.startsWith("@@")) {
+      const match = /@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+      if (match) {
+        leftLine = Number(match[1]);
+        rightLine = Number(match[2]);
+      }
+      continue;
+    }
+
+    if (line.startsWith("-")) {
+      const nextLine = diff.unifiedDiffLines[index + 1];
+      if (nextLine?.startsWith("+")) {
+        rows.push({
+          key: `${leftLine}-${rightLine}-change`,
+          type: "change",
+          leftNumber: leftLine,
+          rightNumber: rightLine,
+          leftText: line.slice(1),
+          rightText: nextLine.slice(1),
+        });
+        leftLine += 1;
+        rightLine += 1;
+        index += 1;
+        continue;
+      }
+
+      rows.push({
+        key: `${leftLine}-remove`,
+        type: "remove",
+        leftNumber: leftLine,
+        leftText: line.slice(1),
+        rightText: "",
+      });
+      leftLine += 1;
+      continue;
+    }
+
+    if (line.startsWith("+")) {
+      rows.push({
+        key: `${rightLine}-add`,
+        type: "add",
+        rightNumber: rightLine,
+        leftText: "",
+        rightText: line.slice(1),
+      });
+      rightLine += 1;
+      continue;
+    }
+
+    if (line.startsWith(" ")) {
+      rows.push({
+        key: `${leftLine}-${rightLine}-context`,
+        type: "context",
+        leftNumber: leftLine,
+        rightNumber: rightLine,
+        leftText: line.slice(1),
+        rightText: line.slice(1),
+      });
+      leftLine += 1;
+      rightLine += 1;
+    }
+  }
+
+  return rows;
+}
+
+function getDiffRowStyle(type: DiffVisualRow["type"], side: "left" | "right"): React.CSSProperties {
+  if (type === "add" && side === "right") {
+    return { background: "rgba(82, 196, 26, 0.12)" };
+  }
+  if (type === "remove" && side === "left") {
+    return { background: "rgba(245, 34, 45, 0.12)" };
+  }
+  if (type === "change") {
+    return { background: "rgba(250, 173, 20, 0.12)" };
+  }
+  return {};
 }
 
 const CollaborationPage = () => {
@@ -110,6 +215,11 @@ const CollaborationPage = () => {
   const remoteLocks = useMemo(
     () => locks.filter((lock) => lock.userId !== currentUserId),
     [currentUserId, locks],
+  );
+  const diffRows = useMemo(() => buildDiffRows(revisionDiff), [revisionDiff]);
+  const changedLineCount = useMemo(
+    () => diffRows.filter((row) => row.type !== "context").length,
+    [diffRows],
   );
 
   const loadRevisionDetail = useCallback(
@@ -217,11 +327,7 @@ const CollaborationPage = () => {
         return;
       }
 
-      if (
-        activeLock &&
-        activeLock.start === range.start &&
-        activeLock.end === range.end
-      ) {
+      if (activeLock && activeLock.start === range.start && activeLock.end === range.end) {
         return;
       }
 
@@ -553,8 +659,8 @@ const CollaborationPage = () => {
         open={revisionDrawerOpen}
         onClose={() => setRevisionDrawerOpen(false)}
       >
-        <div style={{ display: "flex", gap: 16, minHeight: 520 }}>
-          <div style={{ width: 280, borderRight: "1px solid var(--color-border-default)", paddingRight: 16 }}>
+        <div style={{ display: "flex", gap: 16, height: "calc(100vh - 180px)", overflow: "hidden" }}>
+          <div style={{ width: 280, borderRight: "1px solid var(--color-border-default)", paddingRight: 16, overflow: "auto" }}>
             <List
               loading={revisionLoading}
               dataSource={revisions}
@@ -563,68 +669,133 @@ const CollaborationPage = () => {
                 <List.Item
                   style={{
                     cursor: "pointer",
-                    paddingInline: 12,
+                    paddingInline: 0,
                     borderRadius: 8,
+                    border: "none",
                     background: item.revisionId === selectedRevisionId ? "rgba(22, 119, 255, 0.08)" : undefined,
                   }}
                   onClick={() => {
                     void loadRevisionDetail(item.revisionId);
                   }}
                 >
-                  <List.Item.Meta
-                    title={<Text strong>版本 #{item.revisionNo}</Text>}
-                    description={
-                      <Space direction="vertical" size={2}>
-                        <Text type="secondary">{item.creator || item.createdBy}</Text>
-                        <Text type="secondary">{new Date(item.createdAt).toLocaleString()}</Text>
-                        <Text>{item.changeSummary || item.source}</Text>
+                  <Card
+                    size="small"
+                    style={{
+                      width: "100%",
+                      borderRadius: 12,
+                      borderColor: item.revisionId === selectedRevisionId ? "#1677ff" : "var(--color-border-default)",
+                      boxShadow: item.revisionId === selectedRevisionId ? "0 8px 20px rgba(22, 119, 255, 0.12)" : "none",
+                    }}
+                  >
+                    <Space direction="vertical" size={4} style={{ width: "100%" }}>
+                      <Space style={{ justifyContent: "space-between", width: "100%" }}>
+                        <Text strong>版本 #{item.revisionNo}</Text>
+                        <Tag color="blue">{item.source}</Tag>
                       </Space>
-                    }
-                  />
+                      <Text type="secondary">{item.creator || item.createdBy}</Text>
+                      <Text type="secondary">{new Date(item.createdAt).toLocaleString()}</Text>
+                      <Text>{item.changeSummary || "暂无变更摘要"}</Text>
+                    </Space>
+                  </Card>
                 </List.Item>
               )}
             />
           </div>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, overflow: "auto", paddingRight: 4 }}>
             {selectedRevision ? (
               <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                <div>
-                  <Text strong>{selectedRevision.documentTitle}</Text>
-                  <div style={{ marginTop: 8 }}>
-                    <Tag>版本 #{selectedRevision.revisionNo}</Tag>
-                    <Tag color="blue">v{selectedRevision.baseVersion}</Tag>
-                    <Tag>{selectedRevision.source}</Tag>
-                  </div>
-                </div>
+                <Card bordered={false} style={{ background: "var(--color-surface-secondary)", borderRadius: 16 }}>
+                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                    <div>
+                      <Text strong style={{ fontSize: 18 }}>{selectedRevision.documentTitle}</Text>
+                      <div style={{ marginTop: 8 }}>
+                        <Tag>版本 #{selectedRevision.revisionNo}</Tag>
+                        <Tag color="blue">基线 v{selectedRevision.baseVersion}</Tag>
+                        <Tag>{selectedRevision.source}</Tag>
+                      </div>
+                    </div>
 
-                <Paragraph type="secondary">
-                  {selectedRevision.changeSummary || "暂无变更摘要"}
-                </Paragraph>
+                    <Paragraph style={{ marginBottom: 0 }}>
+                      {selectedRevision.changeSummary || "暂无变更摘要"}
+                    </Paragraph>
 
-                <div>
-                  <Text strong>差异内容</Text>
+                    <Space size={12} wrap>
+                      <Card size="small" style={{ minWidth: 140, borderRadius: 12 }}>
+                        <Text type="secondary">变更行数</Text>
+                        <div style={{ fontSize: 22, fontWeight: 700 }}>{changedLineCount}</div>
+                      </Card>
+                      <Card size="small" style={{ minWidth: 140, borderRadius: 12 }}>
+                        <Text type="secondary">当前版本字符数</Text>
+                        <div style={{ fontSize: 22, fontWeight: 700 }}>{selectedRevision.contentSnapshot.length}</div>
+                      </Card>
+                      <Card size="small" style={{ minWidth: 180, borderRadius: 12 }}>
+                        <Text type="secondary">保存时间</Text>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{new Date(selectedRevision.createdAt).toLocaleString()}</div>
+                      </Card>
+                    </Space>
+                  </Space>
+                </Card>
+
+                <Card
+                  title="变更对比"
+                  bordered={false}
+                  style={{ borderRadius: 16 }}
+                  styles={{ body: { padding: 0, overflow: "hidden" } }}
+                >
+                  {diffRows.length > 0 ? (
+                    <div style={{ border: "1px solid var(--color-border-default)", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: "var(--color-surface-secondary)", borderBottom: "1px solid var(--color-border-default)" }}>
+                        <div style={{ padding: "12px 16px", fontWeight: 700 }}>上一版本</div>
+                        <div style={{ padding: "12px 16px", fontWeight: 700, borderLeft: "1px solid var(--color-border-default)" }}>当前版本</div>
+                      </div>
+                      <div style={{ maxHeight: 420, overflow: "auto" }}>
+                        {diffRows.map((row) => (
+                          <div key={row.key} style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "56px 1fr",
+                                borderBottom: "1px solid rgba(5, 5, 5, 0.06)",
+                                ...getDiffRowStyle(row.type, "left"),
+                              }}
+                            >
+                              <div style={{ padding: "6px 8px", color: "var(--color-text-tertiary)", textAlign: "right", userSelect: "none" }}>
+                                {row.leftNumber ?? ""}
+                              </div>
+                              <pre style={{ margin: 0, padding: "6px 12px", fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                                {row.leftText || " "}
+                              </pre>
+                            </div>
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "56px 1fr",
+                                borderLeft: "1px solid var(--color-border-default)",
+                                borderBottom: "1px solid rgba(5, 5, 5, 0.06)",
+                                ...getDiffRowStyle(row.type, "right"),
+                              }}
+                            >
+                              <div style={{ padding: "6px 8px", color: "var(--color-text-tertiary)", textAlign: "right", userSelect: "none" }}>
+                                {row.rightNumber ?? ""}
+                              </div>
+                              <pre style={{ margin: 0, padding: "6px 12px", fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                                {row.rightText || " "}
+                              </pre>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <Empty description="暂无差异数据" style={{ padding: "32px 0" }} />
+                  )}
+                </Card>
+
+                <Card title="版本快照" bordered={false} style={{ borderRadius: 16 }}>
                   <pre
                     style={{
-                      marginTop: 8,
-                      maxHeight: 220,
-                      overflow: "auto",
-                      padding: 12,
-                      borderRadius: 8,
-                      background: "#0f172a",
-                      color: "#e2e8f0",
-                      fontSize: 12,
-                    }}
-                  >
-                    {(revisionDiff?.unifiedDiffLines || ["暂无差异数据"]).join("\n")}
-                  </pre>
-                </div>
-
-                <div>
-                  <Text strong>版本快照</Text>
-                  <pre
-                    style={{
-                      marginTop: 8,
+                      margin: 0,
                       maxHeight: 260,
                       overflow: "auto",
                       padding: 12,
@@ -637,7 +808,7 @@ const CollaborationPage = () => {
                   >
                     {selectedRevision.contentSnapshot}
                   </pre>
-                </div>
+                </Card>
               </Space>
             ) : (
               <Empty description="请选择一个版本查看详情" />

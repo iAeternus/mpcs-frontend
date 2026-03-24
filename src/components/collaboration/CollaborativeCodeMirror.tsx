@@ -1,4 +1,5 @@
-﻿import ReactCodeMirror from "@uiw/react-codemirror";
+﻿import { useMemo } from "react";
+import ReactCodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState, type Extension, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
@@ -22,34 +23,59 @@ interface CollaborativeCodeMirrorProps {
 class LockBadgeWidget extends WidgetType {
   private readonly label: string;
   private readonly color: string;
-  private readonly isSelf: boolean;
 
-  constructor(label: string, color: string, isSelf: boolean) {
+  constructor(label: string, color: string) {
     super();
     this.label = label;
     this.color = color;
-    this.isSelf = isSelf;
   }
 
   override eq(other: LockBadgeWidget): boolean {
-    return other.label === this.label && other.color === this.color && other.isSelf === this.isSelf;
+    return other.label === this.label && other.color === this.color;
   }
 
   override toDOM(): HTMLElement {
-    const element = document.createElement("span");
-    element.textContent = this.isSelf ? `${this.label} 正在编辑` : `${this.label} 已锁定`;
-    element.style.display = "inline-flex";
-    element.style.alignItems = "center";
-    element.style.marginRight = "6px";
-    element.style.padding = "1px 6px";
-    element.style.borderRadius = "999px";
-    element.style.fontSize = "11px";
-    element.style.lineHeight = "16px";
-    element.style.fontWeight = "600";
-    element.style.color = this.color;
-    element.style.background = toAlphaColor(this.color, this.isSelf ? 0.14 : 0.18);
-    element.style.border = `1px solid ${toAlphaColor(this.color, 0.3)}`;
-    return element;
+    const container = document.createElement("span");
+    container.style.display = "inline-block";
+    container.style.position = "relative";
+    container.style.width = "0";
+    container.style.height = "0";
+    container.style.overflow = "visible";
+    container.style.pointerEvents = "none";
+    container.style.verticalAlign = "top";
+
+    const badge = document.createElement("span");
+    badge.textContent = `${this.label} 正在编辑`;
+    badge.style.position = "absolute";
+    badge.style.left = "0";
+    badge.style.top = "-24px";
+    badge.style.display = "inline-flex";
+    badge.style.alignItems = "center";
+    badge.style.padding = "2px 8px";
+    badge.style.borderRadius = "999px";
+    badge.style.fontSize = "11px";
+    badge.style.lineHeight = "16px";
+    badge.style.fontWeight = "700";
+    badge.style.whiteSpace = "nowrap";
+    badge.style.color = this.color;
+    badge.style.background = toAlphaColor(this.color, 0.16);
+    badge.style.border = `1px solid ${toAlphaColor(this.color, 0.32)}`;
+    badge.style.boxShadow = `0 4px 10px ${toAlphaColor(this.color, 0.12)}`;
+    badge.style.transform = "translateX(4px)";
+    container.appendChild(badge);
+
+    const caret = document.createElement("span");
+    caret.style.position = "absolute";
+    caret.style.left = "0";
+    caret.style.top = "-1px";
+    caret.style.display = "inline-block";
+    caret.style.width = "2px";
+    caret.style.height = "20px";
+    caret.style.borderRadius = "999px";
+    caret.style.background = this.color;
+    container.appendChild(caret);
+
+    return container;
   }
 
   override ignoreEvent(): boolean {
@@ -89,44 +115,63 @@ function toAlphaColor(hex: string, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
-function buildDecorations(locks: EditingLockResponse[], currentUserId: string) {
+function clampPosition(position: number, docLength: number): number {
+  return Math.max(0, Math.min(position, docLength));
+}
+
+function buildDecorations(locks: EditingLockResponse[], currentUserId: string, docLength: number) {
   const builder = new RangeSetBuilder<Decoration>();
-  const sortedLocks = [...locks].sort((left, right) => {
-    if (left.start !== right.start) {
-      return left.start - right.start;
-    }
-    if (left.end !== right.end) {
-      return left.end - right.end;
-    }
-    return left.lockId.localeCompare(right.lockId);
-  });
+  const sortedLocks = [...locks]
+    .filter((lock) => lock.userId !== currentUserId)
+    .sort((left, right) => {
+      if (left.start !== right.start) {
+        return left.start - right.start;
+      }
+      if (left.end !== right.end) {
+        return left.end - right.end;
+      }
+      return left.lockId.localeCompare(right.lockId);
+    });
 
   for (const lock of sortedLocks) {
-    const start = Math.max(0, lock.start);
-    const end = Math.max(start, lock.end);
+    const start = clampPosition(lock.start, docLength);
+    const end = clampPosition(Math.max(lock.start, lock.end), docLength);
     const color = getUserColor(lock.userId);
-    const isSelf = lock.userId === currentUserId;
-    const highlight = Decoration.mark({
-      attributes: {
-        style: [
-          `background:${toAlphaColor(color, isSelf ? 0.1 : 0.18)}`,
-          `border-bottom:2px solid ${toAlphaColor(color, 0.9)}`,
-          "border-radius:2px",
-        ].join(";"),
-      },
-    });
 
     builder.add(
       start,
       start,
       Decoration.widget({
-        widget: new LockBadgeWidget(lock.username, color, isSelf),
+        widget: new LockBadgeWidget(lock.username, color),
         side: -1,
       }),
     );
 
     if (start < end) {
-      builder.add(start, end, highlight);
+      builder.add(
+        start,
+        end,
+        Decoration.mark({
+          attributes: {
+            style: [
+              `background:${toAlphaColor(color, 0.16)}`,
+              `border-bottom:2px solid ${toAlphaColor(color, 0.9)}`,
+              `box-shadow:inset 0 0 0 1px ${toAlphaColor(color, 0.16)}`,
+              "border-radius:3px",
+            ].join(";"),
+          },
+        }),
+      );
+    } else {
+      builder.add(
+        start,
+        start,
+        Decoration.mark({
+          attributes: {
+            style: `border-left:2px solid ${color}; margin-left:-1px;`,
+          },
+        }),
+      );
     }
   }
 
@@ -168,11 +213,12 @@ function findConflictingLock(
 function createExtensions(
   locks: EditingLockResponse[],
   currentUserId: string,
+  docLength: number,
   onSelectionChange?: (range: SelectionRange) => void,
   onBlur?: () => void,
   onBlockedEdit?: (lock: EditingLockResponse) => void,
 ): Extension[] {
-  const decorationSet = buildDecorations(locks, currentUserId);
+  const decorationSet = buildDecorations(locks, currentUserId, docLength);
   const decorationExtension = EditorView.decorations.of(decorationSet);
   const blockEditExtension = EditorState.transactionFilter.of((transaction) => {
     if (!transaction.docChanged) {
@@ -255,6 +301,11 @@ const CollaborativeCodeMirror = ({
   onBlur,
   onBlockedEdit,
 }: CollaborativeCodeMirrorProps) => {
+  const extensions = useMemo(
+    () => createExtensions(locks, currentUserId, value.length, onSelectionChange, onBlur, onBlockedEdit),
+    [currentUserId, locks, onBlockedEdit, onBlur, onSelectionChange, value.length],
+  );
+
   return (
     <ReactCodeMirror
       value={value}
@@ -263,7 +314,7 @@ const CollaborativeCodeMirror = ({
         foldGutter: false,
         highlightActiveLine: true,
       }}
-      extensions={createExtensions(locks, currentUserId, onSelectionChange, onBlur, onBlockedEdit)}
+      extensions={extensions}
       onChange={onChange}
     />
   );
