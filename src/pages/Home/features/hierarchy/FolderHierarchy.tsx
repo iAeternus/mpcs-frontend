@@ -22,7 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { buildTreeData, ROOT_OPTION } from "./utils";
 import { HierarchyTreePane } from "./HierarchyTreePane";
 import { useUploadHandler } from "./components/useUploadHandler";
-import { useUploadProgress } from "./UploadProgressModal";
+import { useUploadProgress } from "./useUploadProgress";
 import { isCollaborationSupported } from "@/types/file/enums/fileCategory";
 
 interface FolderHierarchyProps {

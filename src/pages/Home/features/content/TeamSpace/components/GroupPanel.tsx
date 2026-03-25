@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -169,7 +169,7 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
   const [adminPerm, setAdminPerm] = useState<FolderPermissionResponse | null>(null);
   const [memberPerm, setMemberPerm] = useState<FolderPermissionResponse | null>(null);
 
-  const loadGroupDetail = async () => {
+  const loadGroupDetail = useCallback(async () => {
     if (!safeGroupId) {
       setManagers([]);
       setMembers([]);
@@ -190,11 +190,11 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, [safeGroupId]);
 
   useEffect(() => {
     void loadGroupDetail();
-  }, [safeGroupId]);
+  }, [loadGroupDetail]);
 
   useEffect(() => {
     if (!safeCustomId || !selectedFolderId) {

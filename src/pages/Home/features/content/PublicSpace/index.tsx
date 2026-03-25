@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer, Empty, Spin, message, Input, Button } from "antd";
 import { pageApi } from "@/apis/publicfile";
 import {
@@ -83,27 +83,6 @@ export const PublicSpace = () => {
     };
   }, [search, sortValue]);
 
-  const loadPosts = async () => {
-    setLoading(true);
-    try {
-      const data = await pageApi(currentQuery);
-      const normalized = unwrapList<PublicFileResponse>(data.data)
-        .map(normalizePost)
-        .filter((item): item is PublicPost => item !== null);
-      setPosts(normalized);
-      void Promise.all([
-        refreshLikedStatus(normalized),
-        refreshPostsRealtimeCount(normalized),
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadPosts();
-  }, [currentQuery]);
-
   useEffect(() => {
     const loadMyInfo = async () => {
       try {
@@ -167,15 +146,18 @@ export const PublicSpace = () => {
     });
   }, [posts]);
 
-  const updateSinglePost = (postId: string, updater: (post: PublicPost) => PublicPost) => {
-    setPosts((prev) =>
-      prev.map((post) => (post.postId === postId ? updater(post) : post)),
-    );
-    setActivePost((prev) => {
-      if (!prev || prev.postId !== postId) return prev;
-      return updater(prev);
-    });
-  };
+  const updateSinglePost = useCallback(
+    (postId: string, updater: (post: PublicPost) => PublicPost) => {
+      setPosts((prev) =>
+        prev.map((post) => (post.postId === postId ? updater(post) : post)),
+      );
+      setActivePost((prev) => {
+        if (!prev || prev.postId !== postId) return prev;
+        return updater(prev);
+      });
+    },
+    [],
+  );
 
   const getPublisherDisplayName = (publisher: string): string => {
     const info = publisherInfoMap[publisher];
@@ -197,7 +179,7 @@ export const PublicSpace = () => {
     }));
   };
 
-  const fetchAllComments = async (postId: string): Promise<CommentResponse[]> => {
+  const fetchAllComments = useCallback(async (postId: string): Promise<CommentResponse[]> => {
     const rootResp = await pageCommentsApi({
       pageIndex: 1,
       pageSize: 100,
@@ -243,7 +225,7 @@ export const PublicSpace = () => {
     });
 
     return Array.from(unique.values());
-  };
+  }, []);
 
   const loadComments = async (postId: string): Promise<CommentResponse[]> => {
     setCommentLoading(true);
@@ -256,7 +238,7 @@ export const PublicSpace = () => {
     }
   };
 
-  const refreshLikedStatus = async (postList: PublicPost[]) => {
+  const refreshLikedStatus = useCallback(async (postList: PublicPost[]) => {
     const postIds = postList
       .map((post) => post.postId)
       .filter((postId): postId is string => Boolean(postId));
@@ -275,9 +257,9 @@ export const PublicSpace = () => {
     } catch {
       setLikedPostIds(new Set());
     }
-  };
+  }, []);
 
-  const refreshPostsRealtimeCount = async (postList: PublicPost[]) => {
+  const refreshPostsRealtimeCount = useCallback(async (postList: PublicPost[]) => {
     await Promise.allSettled(
       postList
         .filter((post): post is PublicPost & { postId: string } => !!post.postId)
@@ -300,7 +282,28 @@ export const PublicSpace = () => {
           }));
         }),
     );
-  };
+  }, [fetchAllComments, updateSinglePost]);
+
+  const loadPosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await pageApi(currentQuery);
+      const normalized = unwrapList<PublicFileResponse>(data.data)
+        .map(normalizePost)
+        .filter((item): item is PublicPost => item !== null);
+      setPosts(normalized);
+      void Promise.all([
+        refreshLikedStatus(normalized),
+        refreshPostsRealtimeCount(normalized),
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentQuery, refreshLikedStatus, refreshPostsRealtimeCount]);
+
+  useEffect(() => {
+    void loadPosts();
+  }, [loadPosts]);
 
   const openComments = async (post: PublicPost) => {
     if (!post.postId) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
   Dropdown,
@@ -93,7 +93,7 @@ export const PostManage = () => {
     };
   }, [search, sortValue]);
 
-  const loadMyPosts = async () => {
+  const loadMyPosts = useCallback(async () => {
     setLoading(true);
     try {
       const data = await pageMyApi(currentQuery);
@@ -104,11 +104,11 @@ export const PostManage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentQuery]);
 
   useEffect(() => {
     void loadMyPosts();
-  }, [currentQuery]);
+  }, [loadMyPosts]);
 
   const onWithdraw = (post: ManagedPost) => {
     const postId = post.postId;
