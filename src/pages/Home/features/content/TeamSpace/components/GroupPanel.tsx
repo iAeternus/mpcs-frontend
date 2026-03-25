@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -45,6 +45,12 @@ import {
 } from "@/apis/group";
 
 const PERMISSION_VALUES = Object.values(Permission) as GroupPermission[];
+const isHttpStatus = (error: unknown, status: number): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "response" in error &&
+  typeof (error as { response?: { status?: number } }).response?.status === "number" &&
+  (error as { response?: { status?: number } }).response?.status === status;
 const INHERITANCE_OPTIONS = [
   { label: "仅当前目录", value: InheritancePolicy.NONE },
   { label: "向下完全继承", value: InheritancePolicy.FULL },
@@ -230,6 +236,13 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
   }, [isManager, members, selectedMemberId]);
 
   useEffect(() => {
+    if (selectedFolderId && !folderMap[selectedFolderId]) {
+      setSelectedFolderId(undefined);
+      setAdminPerm(null);
+      setMemberPerm(null);
+    }
+  }, [folderMap, selectedFolderId]);
+  useEffect(() => {
     if (!safeGroupId) {
       setGroupFolders([]);
       return;
@@ -289,6 +302,14 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
         const member = await memberPromise;
         setAdminPerm(null);
         setMemberPerm(member);
+      } catch (error) {
+        setAdminPerm(null);
+        setMemberPerm(null);
+        if (isHttpStatus(error, 404)) {
+          setSelectedFolderId((current) =>
+            current === selectedFolderId ? undefined : current,
+          );
+        }
       } finally {
         setPermLoading(false);
       }
@@ -429,6 +450,12 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
           selectedMemberId,
         );
         setMemberPerm(member);
+      }
+    } catch (error) {
+      if (isHttpStatus(error, 404)) {
+        setSelectedFolderId(undefined);
+        setAdminPerm(null);
+        setMemberPerm(null);
       }
     } finally {
       setGranting(false);
