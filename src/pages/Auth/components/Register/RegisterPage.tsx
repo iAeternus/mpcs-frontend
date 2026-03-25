@@ -1,4 +1,4 @@
-import { registerApi } from "@/apis/register";
+﻿import { registerApi } from "@/apis/register";
 import type { RegisterCommand } from "@/types/register/command";
 import { Typography, Form, Input, Button, Checkbox } from "antd";
 import { Link, useNavigate } from "react-router-dom";
@@ -31,6 +31,8 @@ export const RegisterPage = () => {
     const res = await createVerificationCodeForRegisterApi({ mobileOrEmail });
     antdMessage.success(`验证码是：${res.id}`);
   };
+
+
 
   const containerStyle: React.CSSProperties = {
     display: 'flex',
@@ -81,7 +83,9 @@ export const RegisterPage = () => {
   const buttonGroupStyle: React.CSSProperties = {
     display: 'flex',
     gap: 'var(--space-2)',
+    alignItems: 'stretch',
   };
+
 
   return (
     <div style={containerStyle}>
@@ -124,6 +128,7 @@ export const RegisterPage = () => {
               <Button
                 onClick={handleGetVerificationCode}
                 size="large"
+                style={{ height: 40, alignSelf: 'stretch' }}
               >
                 获取
               </Button>
@@ -164,11 +169,11 @@ export const RegisterPage = () => {
           >
             <Checkbox>
               同意
-              <Link to="/agreement" style={linkStyle}>
+              <Link to="/agreement" style={linkStyle} onClick={(event) => event.stopPropagation()}>
                 用户协议
               </Link>
               和
-              <Link to="/privacy" style={linkStyle}>
+              <Link to="/privacy" style={linkStyle} onClick={(event) => event.stopPropagation()}>
                 隐私政策
               </Link>
             </Checkbox>
@@ -203,3 +208,7 @@ export const RegisterPage = () => {
 };
 
 export default RegisterPage;
+
+
+
+

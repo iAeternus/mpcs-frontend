@@ -1,4 +1,4 @@
-import type { IdResponse } from "@/types/common/id";
+﻿import type { IdResponse } from "@/types/common/id";
 import type {
   CreateChangeMobileVerificationCodeCommand,
   CreateFindBackPasswordVerificationCodeCommand,
@@ -6,12 +6,13 @@ import type {
   CreateRegisterVerificationCodeCommand,
   IdentifyMobileVerificationCodeCommand,
 } from "@/types/verification/command";
+import type { VerificationCodeResponse } from "@/types/verification/query";
 import { http } from "@/utils/http";
 
 export const createVerificationCodeForRegisterApi = async (
   cmd: CreateRegisterVerificationCodeCommand,
-): Promise<IdResponse> => {
-  const res = await http.request<IdResponse>({
+): Promise<VerificationCodeResponse> => {
+  const res = await http.request<VerificationCodeResponse>({
     url: "/verification-codes/for-register",
     method: "POST",
     data: cmd,

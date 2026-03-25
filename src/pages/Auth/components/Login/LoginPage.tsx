@@ -1,4 +1,4 @@
-import { Typography, Form, Input, Button } from "antd";
+﻿import { Typography, Form, Input, Button } from "antd";
 import { useAppDispatch } from "@/store";
 import { Link, useNavigate } from "react-router-dom";
 import { RULES } from "@/utils/rules";
@@ -126,3 +126,4 @@ export const LoginPage = () => {
 };
 
 export default LoginPage;
+

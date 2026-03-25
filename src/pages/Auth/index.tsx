@@ -1,14 +1,17 @@
-import { ConfigProvider, theme } from "antd";
+﻿import { ConfigProvider, theme } from "antd";
 import { Outlet } from "react-router-dom";
+import { useAppSelector } from "@/store";
 
 export const AuthPage = () => {
+  const themeMode = useAppSelector((state) => state.theme.mode);
+
   return (
     <ConfigProvider
       theme={{
         inherit: false,
-        algorithm: theme.defaultAlgorithm,
+        algorithm: themeMode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: "#6366f1",
+          colorPrimary: themeMode === "dark" ? "#8b5cf6" : "#6366f1",
         },
       }}
     >

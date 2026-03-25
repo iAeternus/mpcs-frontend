@@ -1,4 +1,4 @@
-/* Theme text tokens */
+﻿/* Theme text tokens */
 :root {
   --mpcs-text-strong: #0f172a;
   --mpcs-text-primary: #1f2937;
@@ -223,4 +223,102 @@
 .auth-theme-fixed .ant-checkbox-inner {
   background: #ffffff !important;
   border-color: rgba(100, 116, 139, 0.7) !important;
+}
+
+
+
+/* Auth theme overrides: follow dark mode and keep controls readable */
+.auth-theme-fixed .ant-typography,
+.auth-theme-fixed .ant-form-item-label > label,
+.auth-theme-fixed .ant-checkbox-wrapper,
+.auth-theme-fixed .ant-checkbox + span,
+.auth-theme-fixed .ant-btn-link {
+  color: var(--color-text-primary) !important;
+}
+
+.auth-theme-fixed .ant-typography h1,
+.auth-theme-fixed .ant-typography h2,
+.auth-theme-fixed .ant-typography h3,
+.auth-theme-fixed .ant-typography.ant-typography,
+.auth-theme-fixed p,
+.auth-theme-fixed span {
+  color: inherit;
+}
+
+.auth-theme-fixed .ant-input,
+.auth-theme-fixed .ant-input-affix-wrapper,
+.auth-theme-fixed .ant-input-affix-wrapper .ant-input,
+.auth-theme-fixed .ant-input-password {
+  background: var(--color-surface-primary) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-default) !important;
+}
+
+.auth-theme-fixed .ant-input::placeholder,
+.auth-theme-fixed .ant-input-affix-wrapper .ant-input::placeholder {
+  color: var(--color-text-placeholder) !important;
+}
+
+.auth-theme-fixed .ant-input-affix-wrapper .ant-input-prefix,
+.auth-theme-fixed .ant-input-affix-wrapper .ant-input-suffix,
+.auth-theme-fixed .ant-input-password-icon {
+  color: var(--color-text-tertiary) !important;
+}
+
+.auth-theme-fixed .ant-input:hover,
+.auth-theme-fixed .ant-input-affix-wrapper:hover,
+.auth-theme-fixed .ant-btn:not(.ant-btn-primary):not(.ant-btn-link):hover {
+  border-color: var(--color-brand-light) !important;
+}
+
+.auth-theme-fixed .ant-input:focus,
+.auth-theme-fixed .ant-input-affix-wrapper-focused,
+.auth-theme-fixed .ant-input-affix-wrapper:focus-within {
+  border-color: var(--color-brand) !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+}
+
+.auth-theme-fixed .ant-btn:not(.ant-btn-primary):not(.ant-btn-link) {
+  background: var(--color-surface-primary) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-default) !important;
+}
+
+.dark .auth-theme-fixed .ant-btn:not(.ant-btn-primary):not(.ant-btn-link) {
+  background: var(--color-surface-secondary) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-strong) !important;
+}
+
+.dark .auth-theme-fixed .ant-btn:not(.ant-btn-primary):not(.ant-btn-link):hover {
+  color: var(--color-inverse-text) !important;
+  background: rgba(129, 140, 248, 0.16) !important;
+}
+
+.auth-theme-fixed .ant-checkbox-wrapper {
+  cursor: pointer;
+}
+
+.auth-theme-fixed .ant-checkbox-inner {
+  background: var(--color-surface-primary) !important;
+  border-color: var(--color-border-strong) !important;
+}
+
+.dark .auth-theme-fixed .ant-checkbox-inner {
+  background: var(--color-surface-secondary) !important;
+  border-color: #94a3b8 !important;
+}
+
+.auth-theme-fixed .ant-checkbox-checked .ant-checkbox-inner {
+  background: var(--color-brand) !important;
+  border-color: var(--color-brand) !important;
+}
+
+.auth-theme-fixed a {
+  color: var(--color-brand) !important;
+  font-weight: 600;
+}
+
+.dark .auth-theme-fixed a {
+  color: #a5b4fc !important;
 }
