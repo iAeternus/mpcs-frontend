@@ -1,5 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
-import { message } from "antd";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CollabUser,
   EditingLockResponse,
@@ -488,9 +487,9 @@ export const useCollaborationEditor = ({
         updateContent(initialContent);
         setLoading(false);
         connectWebSocket(currentSession.sessionId);
-      } catch {
-        setError("Failed to initialize collaboration session");
-        message.error("Failed to initialize collaboration session");
+      } catch (initError) {
+        const candidate = initError as { response?: { status?: number } };
+        setError(candidate.response?.status === 403 ? "权限不足" : "Failed to initialize collaboration session");
         setLoading(false);
       }
     };

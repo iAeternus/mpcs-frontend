@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Input, Modal, TreeSelect, message } from "antd";
 import type { MenuProps, TreeSelectProps } from "antd";
 import type { IdNode } from "@/types/common/idtree";
@@ -24,6 +24,7 @@ import { HierarchyTreePane } from "./HierarchyTreePane";
 import { useUploadHandler } from "./components/useUploadHandler";
 import { useUploadProgress } from "./useUploadProgress";
 import { isCollaborationSupported } from "@/types/file/enums/fileCategory";
+import { fetchFileContentForCollabApi } from "@/apis/collaboration";
 
 interface FolderHierarchyProps {
   customId: string;
@@ -344,6 +345,12 @@ export const FolderHierarchy: React.FC<FolderHierarchyProps> = ({
               key: "collab-edit",
               label: "协同编辑",
               onClick: async () => {
+                try {
+                  await fetchFileContentForCollabApi(file.id);
+                } catch {
+                  return;
+                }
+
                 const parentFolderId = file.parentId || rootFolderId;
                 navigate(
                   `/home/collaboration?fileId=${encodeURIComponent(file.id)}&title=${encodeURIComponent(file.filename)}&parentId=${encodeURIComponent(parentFolderId || "")}`

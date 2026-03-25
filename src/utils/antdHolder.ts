@@ -1,4 +1,4 @@
-import type { MessageInstance } from "antd/es/message/interface";
+﻿import type { MessageInstance } from "antd/es/message/interface";
 import type { NotificationInstance } from "antd/es/notification/interface";
 
 let messageApi: MessageInstance | null = null;
@@ -22,6 +22,12 @@ export const antdNotification = {
   error: (msg: string) =>
     notificationApi?.error({
       message: "错误",
+      description: msg,
+      placement: "top",
+    }),
+  warning: (msg: string) =>
+    notificationApi?.warning({
+      message: "警告",
       description: msg,
       placement: "top",
     }),

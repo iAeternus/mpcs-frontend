@@ -1,5 +1,4 @@
-import { Card, List, Spin } from "antd";
-import { Empty } from "antd";
+﻿import { Card, Empty, List, Spin } from "antd";
 import dayjs from "dayjs";
 import type { Manager, OrdinaryMember } from "@/types/group/query";
 

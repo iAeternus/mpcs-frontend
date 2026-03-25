@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -58,6 +58,11 @@ function getUserColor(userId: string): string {
     hash = (hash * 31 + userId.charCodeAt(index)) % colors.length;
   }
   return colors[Math.abs(hash) % colors.length];
+}
+
+function isAccessDenied(error: unknown): boolean {
+  const candidate = error as { response?: { status?: number } };
+  return candidate.response?.status === 403;
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -204,7 +209,7 @@ const CollaborationPage = () => {
   });
 
   useEffect(() => {
-    if (error) {
+    if (error && error !== "权限不足") {
       message.error(error);
     }
   }, [error]);
@@ -242,7 +247,9 @@ const CollaborationPage = () => {
         setSelectedRevision(detail);
         setRevisionDiff(diff);
       } catch (loadError) {
-        message.error(getErrorMessage(loadError, "加载版本详情失败"));
+        if (!isAccessDenied(loadError)) {
+          message.error(getErrorMessage(loadError, "加载版本详情失败"));
+        }
       } finally {
         setRevisionLoading(false);
       }
@@ -265,7 +272,9 @@ const CollaborationPage = () => {
         setRevisionDiff(null);
       }
     } catch (loadError) {
-      message.error(getErrorMessage(loadError, "加载版本记录失败"));
+      if (!isAccessDenied(loadError)) {
+        message.error(getErrorMessage(loadError, "加载版本记录失败"));
+      }
     } finally {
       setRevisionLoading(false);
     }
@@ -310,7 +319,9 @@ const CollaborationPage = () => {
       }
       message.success("文件保存成功");
     } catch (saveError) {
-      message.error(getErrorMessage(saveError, "文件保存失败"));
+      if (!isAccessDenied(saveError)) {
+        message.error(getErrorMessage(saveError, "文件保存失败"));
+      }
     } finally {
       setSaving(false);
     }
