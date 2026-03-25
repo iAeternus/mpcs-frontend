@@ -1,9 +1,12 @@
-import type { CheckboxOptionType } from "antd/es/checkbox";
-import { Permission } from "@/types/group/enums/permission";
+﻿import type { CheckboxOptionType } from "antd/es/checkbox";
+import {
+  PERMISSION_LABELS,
+  Permission,
+} from "@/types/group/enums/permission";
 
 export const PERMISSION_OPTIONS: CheckboxOptionType[] = Object.values(Permission).map(
   (permission) => ({
-    label: permission,
+    label: PERMISSION_LABELS[permission],
     value: permission,
   }),
 );
