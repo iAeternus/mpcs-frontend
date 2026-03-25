@@ -12,7 +12,6 @@ import {
   message,
 } from "antd";
 import { useFolderHierarchy } from "@/hooks/useFolderHierarchy";
-import type { IdNode } from "@/types/common/idtree";
 import type {
   FolderPermissionResponse,
   GroupFolder,
@@ -32,96 +31,33 @@ import { MemberModal, RemoveMemberModal } from "./MemberModals";
 import { parseUserIds, validateUserIds } from "../utils/teamUtils";
 import {
   addGrantApi,
-  addGrantsApi,
   addGroupManagersApi,
   addGroupMembersApi,
   fetchGroupFoldersApi,
   fetchGroupManagersApi,
   fetchGroupOrdinaryMembersApi,
-  fetchAdminPermissionApi,
   fetchMemberPermissionApi,
   removeGroupManagerApi,
   removeGroupMemberApi,
 } from "@/apis/group";
 
 const PERMISSION_VALUES = Object.values(Permission) as GroupPermission[];
+
+const INHERITANCE_OPTIONS = [
+  { label: "仅当前目录", value: InheritancePolicy.NONE },
+  { label: "向下完全继承", value: InheritancePolicy.FULL },
+  { label: "子级可覆盖", value: InheritancePolicy.OVERRIDABLE },
+];
+
 const isHttpStatus = (error: unknown, status: number): boolean =>
   typeof error === "object" &&
   error !== null &&
   "response" in error &&
-  typeof (error as { response?: { status?: number } }).response?.status === "number" &&
+  typeof (error as { response?: { status?: number } }).response?.status ===
+    "number" &&
   (error as { response?: { status?: number } }).response?.status === status;
-const INHERITANCE_OPTIONS = [
-  { label: "仅当前目录", value: InheritancePolicy.NONE },
-  { label: "向下完全继承", value: InheritancePolicy.FULL },
-  { label: "选择性继承", value: InheritancePolicy.SELECTIVE },
-  { label: "子级可覆盖", value: InheritancePolicy.OVERRIDABLE },
-];
 
-const getDescendantFolderIds = (
-  folderId: string,
-  nodeMap: Map<string, IdNode>,
-): string[] => {
-  const root = nodeMap.get(folderId);
-  if (!root) return [];
-
-  const result: string[] = [];
-  const walk = (node: IdNode) => {
-    (node.children ?? []).forEach((child) => {
-      result.push(child.id);
-      walk(child);
-    });
-  };
-
-  walk(root);
-  return result;
-};
-
-const calcExpandedGrantTargets = (
-  folderId: string,
-  policy: string,
-  explicitGrantIds: Set<string>,
-  nodeMap: Map<string, IdNode>,
-): string[] => {
-  if (!folderId) return [];
-  if (policy === InheritancePolicy.NONE) return [folderId];
-
-  if (
-    policy === InheritancePolicy.FULL ||
-    policy === InheritancePolicy.SELECTIVE
-  ) {
-    return [folderId, ...getDescendantFolderIds(folderId, nodeMap)];
-  }
-
-  const root = nodeMap.get(folderId);
-  if (!root) return [folderId];
-
-  const targets: string[] = [folderId];
-  const walk = (node: IdNode) => {
-    (node.children ?? []).forEach((child) => {
-      if (explicitGrantIds.has(child.id)) {
-        return;
-      }
-      targets.push(child.id);
-      walk(child);
-    });
-  };
-  walk(root);
-  return targets;
-};
-
-interface GroupPanelProps {
-  group: {
-    groupId: string;
-    name: string;
-    customId?: string;
-    active: boolean;
-    inheritancePolicy: string;
-  };
-  isManager: boolean;
-}
-
-type GrantMode = "single" | "expanded";
+type PermissionEditMode = "replace" | "append" | "remove";
 
 const PermissionDisplay = ({
   title,
@@ -155,10 +91,21 @@ const PermissionDisplay = ({
   </div>
 );
 
+interface GroupPanelProps {
+  group: {
+    groupId: string;
+    name: string;
+    customId?: string;
+    active: boolean;
+    inheritancePolicy: string;
+  };
+  isManager: boolean;
+}
+
 export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
   const safeGroupId = group.groupId?.trim() ?? "";
   const safeCustomId = group.customId?.trim() ?? "";
-  const { folderMap, nodeMap } = useFolderHierarchy(safeCustomId);
+  const { folderMap } = useFolderHierarchy(safeCustomId);
 
   const [detailLoading, setDetailLoading] = useState(false);
   const [foldersLoading, setFoldersLoading] = useState(false);
@@ -166,12 +113,15 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
   const [members, setMembers] = useState<OrdinaryMember[]>([]);
   const [groupFolders, setGroupFolders] = useState<GroupFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string>();
-  const [selectedPermissions, setSelectedPermissions] = useState<GroupPermission[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>();
   const [selectedPolicy, setSelectedPolicy] = useState<InheritancePolicy>(
     InheritancePolicy.NONE,
   );
-  const [grantMode, setGrantMode] = useState<GrantMode>("single");
+  const [selectedPermissions, setSelectedPermissions] = useState<
+    GroupPermission[]
+  >([]);
+  const [permissionEditMode, setPermissionEditMode] =
+    useState<PermissionEditMode>("append");
   const [memberInput, setMemberInput] = useState("");
   const [managerInput, setManagerInput] = useState("");
   const [removeMemberInput, setRemoveMemberInput] = useState("");
@@ -182,12 +132,12 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
   const [removeManagerModalOpen, setRemoveManagerModalOpen] = useState(false);
   const [granting, setGranting] = useState(false);
   const [permLoading, setPermLoading] = useState(false);
-  const [adminPerm, setAdminPerm] =
-    useState<FolderPermissionResponse | null>(null);
-  const [memberPerm, setMemberPerm] =
-    useState<FolderPermissionResponse | null>(null);
+  const [memberPerm, setMemberPerm] = useState<FolderPermissionResponse | null>(
+    null,
+  );
 
   const permissionTargetMemberId = isManager ? selectedMemberId : undefined;
+
   const selectedMember = useMemo(
     () => members.find((member) => member.userId === selectedMemberId) ?? null,
     [members, selectedMemberId],
@@ -238,10 +188,11 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
   useEffect(() => {
     if (selectedFolderId && !folderMap[selectedFolderId]) {
       setSelectedFolderId(undefined);
-      setAdminPerm(null);
       setMemberPerm(null);
+      setSelectedPermissions([]);
     }
   }, [folderMap, selectedFolderId]);
+
   useEffect(() => {
     if (!safeGroupId) {
       setGroupFolders([]);
@@ -270,41 +221,31 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
 
   useEffect(() => {
     if (!safeCustomId || !selectedFolderId) {
-      setAdminPerm(null);
       setMemberPerm(null);
+      setSelectedPermissions([]);
       return;
     }
     if (isManager && !permissionTargetMemberId) {
-      setAdminPerm(null);
       setMemberPerm(null);
+      setSelectedPermissions([]);
       return;
     }
 
     const fetchPermissions = async () => {
       setPermLoading(true);
       try {
-        const memberPromise = fetchMemberPermissionApi(
+        const member = await fetchMemberPermissionApi(
           safeCustomId,
           selectedFolderId,
           permissionTargetMemberId,
         );
-
-        if (isManager) {
-          const [admin, member] = await Promise.all([
-            fetchAdminPermissionApi(safeCustomId, selectedFolderId),
-            memberPromise,
-          ]);
-          setAdminPerm(admin);
-          setMemberPerm(member);
-          return;
-        }
-
-        const member = await memberPromise;
-        setAdminPerm(null);
         setMemberPerm(member);
+        setSelectedPermissions(
+          (member.permissions || []) as unknown as GroupPermission[],
+        );
       } catch (error) {
-        setAdminPerm(null);
         setMemberPerm(null);
+        setSelectedPermissions([]);
         if (isHttpStatus(error, 404)) {
           setSelectedFolderId((current) =>
             current === selectedFolderId ? undefined : current,
@@ -317,11 +258,6 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
 
     void fetchPermissions();
   }, [isManager, permissionTargetMemberId, safeCustomId, selectedFolderId]);
-
-  const explicitGrantIds = useMemo(
-    () => new Set(groupFolders.map((folder) => folder.folderId)),
-    [groupFolders],
-  );
 
   const folderOptions = useMemo(
     () =>
@@ -340,16 +276,6 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
       })),
     [members],
   );
-
-  const expandedTargets = useMemo(() => {
-    if (!selectedFolderId) return [];
-    return calcExpandedGrantTargets(
-      selectedFolderId,
-      selectedPolicy,
-      explicitGrantIds,
-      nodeMap,
-    );
-  }, [explicitGrantIds, nodeMap, selectedFolderId, selectedPolicy]);
 
   const onAddMembers = async (input: string, role: "manager" | "member") => {
     const ids = parseUserIds(input);
@@ -411,51 +337,47 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
       message.warning("请选择目标文件夹");
       return;
     }
-    if (!selectedPermissions.length) {
-      message.warning("请至少选择一项权限");
+
+    const current = new Set<Permission>((memberPerm?.permissions || []) as Permission[]);
+    const selected = new Set<Permission>(selectedPermissions as Permission[]);
+    let nextSet: Set<Permission>;
+
+    if (permissionEditMode === "replace") {
+      nextSet = selected;
+    } else if (permissionEditMode === "append") {
+      nextSet = new Set([...current, ...selected]);
+    } else {
+      nextSet = new Set([...current].filter((perm) => !selected.has(perm)));
+    }
+
+    if (nextSet.size === 0) {
+      message.warning("至少保留一项权限，清空权限请使用专用移除流程");
       return;
     }
 
     setGranting(true);
     try {
-      if (grantMode === "single") {
-        await addGrantApi({
-          groupId: safeGroupId,
-          memberId: selectedMemberId,
-          folderId: selectedFolderId,
-          permissions: selectedPermissions,
-          inheritancePolicy: selectedPolicy,
-        });
-      } else {
-        if (expandedTargets.length > 1024) {
-          message.warning("批量授权目录过多，请缩小范围后重试");
-          return;
-        }
-        await addGrantsApi({
-          groupId: safeGroupId,
-          memberId: selectedMemberId,
-          folderIds: expandedTargets,
-          permissions: selectedPermissions,
-          inheritancePolicy: selectedPolicy,
-        });
-      }
+      await addGrantApi({
+        groupId: safeGroupId,
+        memberId: selectedMemberId,
+        folderId: selectedFolderId,
+        permissions: [...nextSet] as GroupPermission[],
+        inheritancePolicy: selectedPolicy,
+      });
 
       message.success("权限更新成功");
-      const folderResp = await fetchGroupFoldersApi(safeGroupId, selectedMemberId);
+      const [folderResp, member] = await Promise.all([
+        fetchGroupFoldersApi(safeGroupId, selectedMemberId),
+        fetchMemberPermissionApi(safeCustomId, selectedFolderId, selectedMemberId),
+      ]);
       setGroupFolders(folderResp.groupFolders);
-      if (selectedFolderId) {
-        const member = await fetchMemberPermissionApi(
-          safeCustomId,
-          selectedFolderId,
-          selectedMemberId,
-        );
-        setMemberPerm(member);
-      }
+      setMemberPerm(member);
+      setSelectedPermissions((member.permissions || []) as GroupPermission[]);
     } catch (error) {
       if (isHttpStatus(error, 404)) {
         setSelectedFolderId(undefined);
-        setAdminPerm(null);
         setMemberPerm(null);
+        setSelectedPermissions([]);
       }
     } finally {
       setGranting(false);
@@ -471,7 +393,7 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
   return (
     <div style={panelStyle}>
       {!group.active && (
-        <Alert type="warning" showIcon message="该团队已停用，部分操作已受限" />
+        <Alert type="warning" showIcon message="该团队已停用，部分操作受限" />
       )}
 
       <FolderTree customId={safeCustomId} />
@@ -482,11 +404,11 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
           className="rounded-3xl border border-white/55 bg-white/65 shadow-lg backdrop-blur"
         >
           <div className="grid gap-6 lg:grid-cols-2">
-            <Space direction="vertical" size={16} className="w-full">
+            <Space orientation="vertical" size={16} className="w-full">
               <Alert
                 type="info"
                 showIcon
-                message="管理员默认拥有全部权限。普通成员权限按成员单独授权，且继承策略互不影响。"
+                message="普通成员权限按成员单独授权，继承策略互不影响。管理员默认拥有全部权限。"
               />
 
               <Select
@@ -521,6 +443,21 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
               </div>
 
               <div>
+                <div className="mb-2 text-sm font-medium">变更模式</div>
+                <Radio.Group
+                  value={permissionEditMode}
+                  onChange={(event) =>
+                    setPermissionEditMode(event.target.value as PermissionEditMode)
+                  }
+                  disabled={!group.active || !selectedMemberId}
+                >
+                  <Radio.Button value="append">追加</Radio.Button>
+                  <Radio.Button value="replace">覆盖</Radio.Button>
+                  <Radio.Button value="remove">移除</Radio.Button>
+                </Radio.Group>
+              </div>
+
+              <div>
                 <div className="mb-2 text-sm font-medium">权限配置</div>
                 <Checkbox.Group
                   value={selectedPermissions}
@@ -547,25 +484,8 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
                 </Checkbox.Group>
               </div>
 
-              <Radio.Group
-                value={grantMode}
-                onChange={(event) => setGrantMode(event.target.value as GrantMode)}
-                disabled={!group.active || !selectedMemberId}
-              >
-                <Radio.Button value="single">仅当前目录</Radio.Button>
-                <Radio.Button value="expanded">按继承展开</Radio.Button>
-              </Radio.Group>
-
-              {grantMode === "expanded" && selectedFolderId && (
-                <Alert
-                  type="info"
-                  showIcon
-                  message={`将覆盖 ${expandedTargets.length} 个目录`}
-                />
-              )}
-
               {!members.length && (
-                <Alert type="warning" showIcon message="请先添加普通成员，再为其配置目录权限。" />
+                <Alert type="warning" showIcon message="请先添加普通成员，再配置目录权限" />
               )}
 
               <Button
@@ -602,12 +522,7 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
                   <Spin />
                 </div>
               ) : selectedFolderId && selectedMemberId ? (
-                <div className="flex flex-col gap-4 rounded-lg bg-gray-50 p-4">
-                  <PermissionDisplay
-                    title="管理员默认权限"
-                    permissions={(adminPerm?.permissions || []) as Permission[]}
-                    inherited={adminPerm?.inherited || false}
-                  />
+                <div className="rounded-lg bg-gray-50 p-4">
                   <PermissionDisplay
                     title={selectedMember ? `${selectedMember.username} 的权限` : "成员权限"}
                     permissions={(memberPerm?.permissions || []) as Permission[]}
@@ -628,11 +543,11 @@ export const GroupPanel = ({ group, isManager }: GroupPanelProps) => {
           className="rounded-3xl border border-white/55 bg-white/65 shadow-lg backdrop-blur"
         >
           <div className="grid gap-6 lg:grid-cols-2">
-            <Space direction="vertical" size={16} className="w-full">
+            <Space orientation="vertical" size={16} className="w-full">
               <Alert
                 type="info"
                 showIcon
-                message="你只能查看自己的权限视图。需要新增或调整目录权限时，请联系团队管理员。"
+                message="你只能查看自己的权限视图。需要调整目录权限，请联系团队管理员。"
               />
               <Select
                 showSearch
